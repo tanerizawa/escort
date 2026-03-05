@@ -1,0 +1,178 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import api from '@/lib/api';
+import { formatCurrency } from '@/lib/utils';
+
+type PaymentStatus = 'PENDING' | 'ESCROW' | 'RELEASED' | 'REFUNDED' | 'FAILED';
+
+interface PaymentInfo {
+  id: string;
+  bookingId: string;
+  amount: number;
+  status: PaymentStatus;
+  paymentMethod: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const STATUS_CONFIG: Record<PaymentStatus, { icon: string; title: string; desc: string; color: string }> = {
+  PENDING: {
+    icon: '⏳',
+    title: 'Menunggu Pembayaran',
+    desc: 'Silakan selesaikan pembayaran sebelum batas waktu.',
+    color: 'text-yellow-400',
+  },
+  ESCROW: {
+    icon: '🔒',
+    title: 'Pembayaran Diterima',
+    desc: 'Dana telah diterima dan disimpan dalam escrow hingga layanan selesai.',
+    color: 'text-blue-400',
+  },
+  RELEASED: {
+    icon: '✅',
+    title: 'Pembayaran Selesai',
+    desc: 'Pembayaran telah berhasil diproses dan dana telah dicairkan.',
+    color: 'text-green-400',
+  },
+  REFUNDED: {
+    icon: '↩️',
+    title: 'Dana Dikembalikan',
+    desc: 'Pembayaran telah direfund ke metode pembayaran Anda.',
+    color: 'text-purple-400',
+  },
+  FAILED: {
+    icon: '❌',
+    title: 'Pembayaran Gagal',
+    desc: 'Pembayaran gagal diproses. Silakan coba lagi.',
+    color: 'text-red-400',
+  },
+};
+
+export default function PaymentStatusPage() {
+  const params = useParams();
+  const router = useRouter();
+  const paymentId = params.id as string;
+
+  const [payment, setPayment] = useState<PaymentInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const pollRef = useState<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    loadPayment();
+
+    // Poll for status changes
+    const interval = setInterval(loadPayment, 5000);
+
+    return () => clearInterval(interval);
+  }, [paymentId]);
+
+  const loadPayment = async () => {
+    try {
+      const res = await api.get(`/payments/${paymentId}`);
+      setPayment(res.data);
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-400/30 border-t-brand-400" />
+      </div>
+    );
+  }
+
+  if (!payment) {
+    return (
+      <div className="py-20 text-center">
+        <p className="text-dark-400">Pembayaran tidak ditemukan</p>
+        <Button className="mt-4" onClick={() => router.push('/payments')}>Kembali</Button>
+      </div>
+    );
+  }
+
+  const config = STATUS_CONFIG[payment.status] || STATUS_CONFIG.PENDING;
+
+  return (
+    <div className="mx-auto max-w-lg py-8">
+      <Card>
+        <CardContent>
+          <div className="py-8 text-center">
+            {/* Status icon with animation for pending */}
+            <div className={`mb-6 text-6xl ${payment.status === 'PENDING' ? 'animate-pulse' : ''}`}>
+              {config.icon}
+            </div>
+
+            <h2 className={`text-xl font-light ${config.color}`}>{config.title}</h2>
+            <p className="mt-2 text-sm text-dark-400">{config.desc}</p>
+
+            {/* Payment Details */}
+            <div className="mt-8 rounded-xl border border-dark-700/50 bg-dark-800/30 p-4 text-left">
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-dark-500">ID Pembayaran</span>
+                  <span className="font-mono text-xs text-dark-300">{payment.id.slice(0, 12)}...</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-dark-500">Jumlah</span>
+                  <span className="font-medium text-dark-200">{formatCurrency(payment.amount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-dark-500">Metode</span>
+                  <span className="text-dark-300">{payment.paymentMethod || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-dark-500">Tanggal</span>
+                  <span className="text-dark-300">
+                    {new Date(payment.createdAt).toLocaleDateString('id-ID', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Countdown for pending */}
+            {payment.status === 'PENDING' && (
+              <div className="mt-6 rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                <p className="text-xs text-yellow-400">
+                  ⏰ Selesaikan pembayaran dalam 24 jam untuk menghindari pembatalan otomatis.
+                </p>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="mt-8 flex flex-col gap-3">
+              {payment.status === 'PENDING' && (
+                <Button className="w-full" onClick={() => router.push(`/payments/checkout?bookingId=${payment.bookingId}`)}>
+                  Bayar Sekarang
+                </Button>
+              )}
+              <Button
+                variant={payment.status === 'PENDING' ? 'outline' : 'secondary'}
+                className="w-full"
+                onClick={() => router.push(`/bookings/${payment.bookingId}`)}
+              >
+                Lihat Detail Booking
+              </Button>
+              <Button variant="ghost" className="w-full" onClick={() => router.push('/payments')}>
+                Riwayat Pembayaran
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

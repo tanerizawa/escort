@@ -1,0 +1,316 @@
+// ============================================
+// ARETON.id — Prisma Schema
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ───────────────────────────────────
+
+enum UserRole {
+  CLIENT
+  ESCORT
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum EscortTier {
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  ONGOING
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum PaymentStatus {
+  PENDING
+  ESCROW
+  RELEASED
+  REFUNDED
+  FAILED
+}
+
+enum IncidentType {
+  SOS
+  COMPLAINT
+  FEEDBACK
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  SYSTEM
+}
+
+// ── Models ──────────────────────────────────
+
+model User {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  phone            String?   @unique
+  passwordHash     String
+  role             UserRole  @default(CLIENT)
+  firstName        String
+  lastName         String
+  isVerified       Boolean   @default(false)
+  isActive         Boolean   @default(true)
+  profilePhoto     String?
+  twoFactorEnabled Boolean   @default(false)
+  twoFactorSecret  String?
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  escortProfile   EscortProfile?
+  clientBookings  Booking[]        @relation("ClientBookings")
+  escortBookings  Booking[]        @relation("EscortBookings")
+  sentMessages    ChatMessage[]    @relation("SentMessages")
+  givenReviews    Review[]         @relation("GivenReviews")
+  receivedReviews Review[]         @relation("ReceivedReviews")
+  notifications   Notification[]
+  incidentReports IncidentReport[] @relation("ReportedIncidents")
+  favorites       Favorite[]       @relation("UserFavorites")
+  favoritedBy     Favorite[]       @relation("FavoritedEscort")
+
+  @@map("users")
+}
+
+model EscortProfile {
+  id                   String     @id @default(uuid())
+  userId               String     @unique
+  user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier                 EscortTier @default(SILVER)
+  languages            String[]
+  skills               String[]
+  hourlyRate           Decimal    @db.Decimal(12, 2)
+  ratingAvg            Float      @default(0)
+  totalBookings        Int        @default(0)
+  totalReviews         Int        @default(0)
+  bio                  String?    @db.Text
+  portfolioUrls        String[]
+  videoIntroUrl        String?
+  isApproved           Boolean    @default(false)
+  approvedAt           DateTime?
+  availabilitySchedule Json?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  // Relations
+  certifications Certification[]
+
+  @@map("escort_profiles")
+}
+
+model Certification {
+  id          String         @id @default(uuid())
+  escortId    String
+  escort      EscortProfile  @relation(fields: [escortId], references: [id], onDelete: Cascade)
+  certType    String
+  certName    String
+  issuer      String
+  validUntil  DateTime?
+  documentUrl String
+  isVerified  Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+
+  @@map("certifications")
+}
+
+model Booking {
+  id              String        @id @default(uuid())
+  clientId        String
+  client          User          @relation("ClientBookings", fields: [clientId], references: [id])
+  escortId        String
+  escort          User          @relation("EscortBookings", fields: [escortId], references: [id])
+  serviceType     String
+  status          BookingStatus @default(PENDING)
+  startTime       DateTime
+  endTime         DateTime
+  location        String
+  locationLat     Float?
+  locationLng     Float?
+  specialRequests String?       @db.Text
+  totalAmount     Decimal       @db.Decimal(12, 2)
+  checkinAt       DateTime?
+  checkoutAt      DateTime?
+  cancelledAt     DateTime?
+  cancelledBy     String?
+  cancelReason    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  payment    Payment?
+  messages   ChatMessage[]
+  reviews    Review[]
+  incidents  IncidentReport[]
+
+  @@index([clientId])
+  @@index([escortId])
+  @@index([status])
+  @@index([startTime])
+  @@map("bookings")
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  bookingId         String        @unique
+  booking           Booking       @relation(fields: [bookingId], references: [id])
+  amount            Decimal       @db.Decimal(12, 2)
+  method            String
+  status            PaymentStatus @default(PENDING)
+  platformFee       Decimal       @db.Decimal(12, 2)
+  escortPayout      Decimal       @db.Decimal(12, 2)
+  tipAmount         Decimal?      @db.Decimal(12, 2)
+  paymentGatewayRef String?
+  paidAt            DateTime?
+  releasedAt        DateTime?
+  refundedAt        DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([status])
+  @@map("payments")
+}
+
+model Review {
+  id                   String   @id @default(uuid())
+  bookingId            String
+  booking              Booking  @relation(fields: [bookingId], references: [id])
+  reviewerId           String
+  reviewer             User     @relation("GivenReviews", fields: [reviewerId], references: [id])
+  revieweeId           String
+  reviewee             User     @relation("ReceivedReviews", fields: [revieweeId], references: [id])
+  rating               Int      // 1-5
+  comment              String?  @db.Text
+  attitudeScore        Int?     // 1-5
+  punctualityScore     Int?     // 1-5
+  professionalismScore Int?     // 1-5
+  replyComment         String?  @db.Text
+  repliedAt            DateTime?
+  isFlagged            Boolean  @default(false)
+  createdAt            DateTime @default(now())
+
+  @@unique([bookingId, reviewerId])
+  @@index([revieweeId])
+  @@map("reviews")
+}
+
+model ChatMessage {
+  id        String      @id @default(uuid())
+  bookingId String
+  booking   Booking     @relation(fields: [bookingId], references: [id])
+  senderId  String
+  sender    User        @relation("SentMessages", fields: [senderId], references: [id])
+  content   String      @db.Text // encrypted
+  type      MessageType @default(TEXT)
+  readAt    DateTime?
+  createdAt DateTime    @default(now())
+
+  @@index([bookingId, createdAt])
+  @@map("chat_messages")
+}
+
+model IncidentReport {
+  id               String       @id @default(uuid())
+  bookingId        String
+  booking          Booking      @relation(fields: [bookingId], references: [id])
+  reporterId       String
+  reporter         User         @relation("ReportedIncidents", fields: [reporterId], references: [id])
+  type             IncidentType
+  description      String       @db.Text
+  severity         Int          // 1-5
+  resolutionStatus String       @default("OPEN")
+  adminNotes       String?      @db.Text
+  resolvedAt       DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([type])
+  @@index([resolutionStatus])
+  @@map("incident_reports")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  type      String   // BOOKING, PAYMENT, CHAT, SAFETY, SYSTEM
+  data      Json?
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation("UserFavorites", fields: [userId], references: [id], onDelete: Cascade)
+  escortId  String
+  escort    User     @relation("FavoritedEscort", fields: [escortId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, escortId])
+  @@map("favorites")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String   // LOGIN, LOGOUT, SOS_TRIGGER, PAYMENT, ADMIN_ACTION, DATA_ACCESS, PROFILE_UPDATE, etc.
+  resource   String   // users, bookings, payments, etc.
+  resourceId String?
+  details    Json?    // Action-specific metadata
+  ipAddress  String?
+  userAgent  String?
+  severity   String   @default("INFO") // INFO, WARN, CRITICAL
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model PromoCode {
+  id             String    @id @default(uuid())
+  code           String    @unique
+  description    String?
+  discountType   String    // PERCENTAGE, FIXED
+  discountValue  Decimal   @db.Decimal(12, 2)
+  minOrderAmount Decimal?  @db.Decimal(12, 2)
+  maxDiscount    Decimal?  @db.Decimal(12, 2)
+  usageLimit     Int?
+  usageCount     Int       @default(0)
+  validFrom      DateTime
+  validUntil     DateTime
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+  @@map("promo_codes")
+}
