@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import api from '@/lib/api';
 
 interface TimeSlot {
   start: string;
@@ -47,6 +48,7 @@ export default function EscortCalendarPage() {
   const [blockStart, setBlockStart] = useState('');
   const [blockEnd, setBlockEnd] = useState('');
   const [blockReason, setBlockReason] = useState('');
+  const [saveMessage, setSaveMessage] = useState('');
 
   const weekDates = useMemo(() => {
     const today = new Date();
@@ -67,16 +69,11 @@ export default function EscortCalendarPage() {
 
   const fetchAvailability = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/escorts/me/availability`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSchedule(data.weeklySchedule || {});
-        setBlockedDates(data.blockedDates || []);
-        setDraftSchedule(data.weeklySchedule || {});
-      }
+      const res = await api.get('/escorts/me/availability');
+      const data = res.data?.data || res.data;
+      setSchedule(data.weeklySchedule || {});
+      setBlockedDates(data.blockedDates || []);
+      setDraftSchedule(data.weeklySchedule || {});
     } catch (err) {
       console.error('Failed to fetch availability:', err);
     }
@@ -84,26 +81,24 @@ export default function EscortCalendarPage() {
 
   const fetchBookings = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const start = weekDates[0].toISOString();
-      const end = weekDates[6].toISOString();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings?startAfter=${start}&endBefore=${end}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const startDate = weekDates[0].toISOString();
+      const endDate = weekDates[6].toISOString();
+      const res = await api.get('/bookings', {
+        params: { limit: 100, startDate, endDate },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setBookings(
-          (data.data || []).map((b: any) => ({
-            id: b.id,
-            clientName: `${b.client?.firstName || ''} ${b.client?.lastName || ''}`.trim(),
-            serviceType: b.serviceType,
-            status: b.status,
-            startTime: b.startTime,
-            endTime: b.endTime,
-            location: b.location,
-          })),
-        );
-      }
+      const payload = res.data?.data || res.data;
+      const allItems = Array.isArray(payload) ? payload : (payload?.data || []);
+      setBookings(
+        allItems.map((b: any) => ({
+          id: b.id,
+          clientName: `${b.client?.firstName || ''} ${b.client?.lastName || ''}`.trim(),
+          serviceType: b.serviceType,
+          status: b.status,
+          startTime: b.startTime,
+          endTime: b.endTime,
+          location: b.location,
+        })),
+      );
     } catch (err) {
       console.error('Failed to fetch bookings:', err);
     }
@@ -112,14 +107,9 @@ export default function EscortCalendarPage() {
   const handleSaveSchedule = async () => {
     try {
       setSaving(true);
-      const token = localStorage.getItem('token');
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/escorts/me/availability`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ schedule: draftSchedule, blockedDates }),
+      await api.put('/escorts/me/availability', {
+        schedule: draftSchedule,
+        blockedDates,
       });
       setSchedule(draftSchedule);
       setEditMode(false);
@@ -130,17 +120,35 @@ export default function EscortCalendarPage() {
     }
   };
 
-  const handleAddBlock = () => {
+  const saveBlockedDates = async (newBlockedDates: BlockedDate[]) => {
+    try {
+      await api.put('/escorts/me/availability', {
+        schedule,
+        blockedDates: newBlockedDates,
+      });
+      setSaveMessage('Tanggal blokir berhasil disimpan');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } catch (err) {
+      setSaveMessage('Gagal menyimpan tanggal blokir');
+      setTimeout(() => setSaveMessage(''), 3000);
+    }
+  };
+
+  const handleAddBlock = async () => {
     if (!blockStart || !blockEnd) return;
-    setBlockedDates((prev) => [...prev, { start: blockStart, end: blockEnd, reason: blockReason || undefined }]);
+    const newBlocked = [...blockedDates, { start: blockStart, end: blockEnd, reason: blockReason || undefined }];
+    setBlockedDates(newBlocked);
     setBlockStart('');
     setBlockEnd('');
     setBlockReason('');
     setShowBlockModal(false);
+    await saveBlockedDates(newBlocked);
   };
 
-  const handleRemoveBlock = (index: number) => {
-    setBlockedDates((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveBlock = async (index: number) => {
+    const newBlocked = blockedDates.filter((_, i) => i !== index);
+    setBlockedDates(newBlocked);
+    await saveBlockedDates(newBlocked);
   };
 
   const toggleDay = (dayIndex: number) => {
@@ -181,6 +189,17 @@ export default function EscortCalendarPage() {
 
   return (
     <div className="space-y-6">
+      {/* Save Message */}
+      {saveMessage && (
+        <div className={`rounded-lg border px-4 py-3 text-sm ${
+          saveMessage.includes('berhasil')
+            ? 'border-green-500/20 bg-green-500/10 text-green-400'
+            : 'border-red-500/20 bg-red-500/10 text-red-400'
+        }`}>
+          {saveMessage}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>

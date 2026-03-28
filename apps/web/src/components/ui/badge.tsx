@@ -4,22 +4,24 @@ import { cn } from '@/lib/utils';
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   variant?: 'default' | 'brand' | 'success' | 'warning' | 'danger' | 'info';
   size?: 'sm' | 'md';
+  pulse?: boolean;
 }
 
 export function Badge({
   className,
   variant = 'default',
   size = 'sm',
+  pulse = false,
   children,
   ...props
 }: BadgeProps) {
   const variants = {
     default: 'bg-dark-700/50 text-dark-300 border-dark-600/30',
-    brand: 'bg-brand-400/10 text-brand-400 border-brand-400/20',
-    success: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    warning: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    danger: 'bg-red-500/10 text-red-400 border-red-500/20',
-    info: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    brand: 'bg-brand-400/10 text-brand-400 border-brand-400/20 shadow-sm shadow-brand-400/5',
+    success: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-sm shadow-emerald-500/5',
+    warning: 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-sm shadow-amber-500/5',
+    danger: 'bg-red-500/10 text-red-400 border-red-500/20 shadow-sm shadow-red-500/5',
+    info: 'bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-sm shadow-blue-500/5',
   };
 
   const sizes = {
@@ -30,9 +32,10 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full border font-medium uppercase tracking-wider',
+        'inline-flex items-center rounded-full border font-medium uppercase tracking-wider transition-all duration-300',
         variants[variant],
         sizes[size],
+        pulse && 'animate-pulse',
         className,
       )}
       {...props}

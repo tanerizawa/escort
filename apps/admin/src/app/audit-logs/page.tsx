@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
+import AdminLayout from '@/components/admin-layout';
 
 interface AuditLog {
   id: string;
@@ -44,8 +45,10 @@ export default function AdminAuditLogsPage() {
       if (filters.userId) params.set('userId', filters.userId);
 
       const res = await api.get(`/admin/audit-logs?${params}`);
-      setLogs(res.data.data || []);
-      setTotalPages(res.data.pagination?.totalPages || 1);
+      const payload = res.data?.data || res.data;
+      const list = payload?.data || payload;
+      setLogs(Array.isArray(list) ? list : []);
+      setTotalPages(payload?.pagination?.totalPages || 1);
     } catch {
       // ignore
     } finally {
@@ -54,9 +57,9 @@ export default function AdminAuditLogsPage() {
   };
 
   const severityColors: Record<string, string> = {
-    INFO: 'bg-blue-100 text-blue-700',
-    WARN: 'bg-yellow-100 text-yellow-700',
-    CRITICAL: 'bg-red-100 text-red-700',
+    INFO: 'bg-sky-400/10 text-sky-400 border border-sky-400/30',
+    WARN: 'bg-amber-400/10 text-amber-400 border border-amber-400/30',
+    CRITICAL: 'bg-red-400/10 text-red-400 border border-red-400/30',
   };
 
   const formatDate = (dateStr: string) =>
@@ -70,15 +73,19 @@ export default function AdminAuditLogsPage() {
     });
 
   return (
+    <AdminLayout>
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Audit Logs</h1>
+      <div>
+        <h1 className="text-2xl font-light tracking-wide text-dark-100">Audit Logs</h1>
+        <p className="mt-1 text-sm text-dark-400">Log aktivitas sistem dan keamanan</p>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <select
           value={filters.severity}
           onChange={(e) => { setFilters({ ...filters, severity: e.target.value }); setPage(1); }}
-          className="rounded-lg border px-3 py-2 text-sm"
+          className="rounded-lg border border-dark-600/30 bg-dark-800 px-3 py-2 text-sm text-dark-200"
         >
           <option value="">Semua Severity</option>
           <option value="INFO">INFO</option>
@@ -88,7 +95,7 @@ export default function AdminAuditLogsPage() {
         <select
           value={filters.action}
           onChange={(e) => { setFilters({ ...filters, action: e.target.value }); setPage(1); }}
-          className="rounded-lg border px-3 py-2 text-sm"
+          className="rounded-lg border border-dark-600/30 bg-dark-800 px-3 py-2 text-sm text-dark-200"
         >
           <option value="">Semua Action</option>
           <option value="LOGIN">LOGIN</option>
@@ -107,24 +114,24 @@ export default function AdminAuditLogsPage() {
           placeholder="User ID..."
           value={filters.userId}
           onChange={(e) => { setFilters({ ...filters, userId: e.target.value }); setPage(1); }}
-          className="rounded-lg border px-3 py-2 text-sm w-72"
+          className="rounded-lg border border-dark-600/30 bg-dark-800 px-3 py-2 text-sm text-dark-200 placeholder:text-dark-500 w-72"
         />
       </div>
 
       {/* Table */}
       {loading ? (
         <div className="flex justify-center py-10">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-dark-600 border-t-brand-400" />
         </div>
       ) : logs.length === 0 ? (
-        <div className="rounded-xl border bg-white p-10 text-center text-gray-400">
+        <div className="rounded-xl border border-dark-700/30 bg-dark-800/20 p-10 text-center text-dark-400">
           Tidak ada audit log
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border bg-white">
+        <div className="overflow-x-auto rounded-lg border border-dark-700/50">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
-              <tr>
+            <thead className="bg-dark-800/50">
+              <tr className="text-left text-xs uppercase tracking-wider text-dark-500">
                 <th className="px-4 py-3">Waktu</th>
                 <th className="px-4 py-3">Severity</th>
                 <th className="px-4 py-3">Action</th>
@@ -134,33 +141,33 @@ export default function AdminAuditLogsPage() {
                 <th className="px-4 py-3">IP</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-dark-700/30">
               {logs.map((log) => (
-                <tr key={log.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-xs whitespace-nowrap">
+                <tr key={log.id} className="hover:bg-dark-800/30">
+                  <td className="px-4 py-3 text-xs text-dark-300 whitespace-nowrap">
                     {formatDate(log.createdAt)}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                      severityColors[log.severity] || 'bg-gray-100 text-gray-700'
+                      severityColors[log.severity] || 'bg-dark-700/30 text-dark-400'
                     }`}>
                       {log.severity}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs">{log.action}</td>
-                  <td className="px-4 py-3 text-xs">
+                  <td className="px-4 py-3 font-mono text-xs text-dark-200">{log.action}</td>
+                  <td className="px-4 py-3 text-xs text-dark-300">
                     {log.resource}
                     {log.resourceId && (
-                      <span className="text-gray-400">:{log.resourceId.slice(0, 8)}</span>
+                      <span className="text-dark-500">:{log.resourceId.slice(0, 8)}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs font-mono">
+                  <td className="px-4 py-3 text-xs font-mono text-dark-300">
                     {log.userId ? log.userId.slice(0, 8) + '...' : 'system'}
                   </td>
-                  <td className="px-4 py-3 text-xs max-w-xs truncate">
+                  <td className="px-4 py-3 text-xs text-dark-400 max-w-xs truncate">
                     {log.details ? JSON.stringify(log.details) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-400">{log.ipAddress || '—'}</td>
+                  <td className="px-4 py-3 text-xs text-dark-500">{log.ipAddress || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -174,22 +181,23 @@ export default function AdminAuditLogsPage() {
           <button
             onClick={() => setPage(Math.max(1, page - 1))}
             disabled={page === 1}
-            className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50"
+            className="rounded-lg border border-dark-600/30 bg-dark-800 px-3 py-1.5 text-sm text-dark-300 hover:text-dark-100 disabled:opacity-50"
           >
             ← Prev
           </button>
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-dark-400">
             Hal {page} / {totalPages}
           </span>
           <button
             onClick={() => setPage(Math.min(totalPages, page + 1))}
             disabled={page === totalPages}
-            className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50"
+            className="rounded-lg border border-dark-600/30 bg-dark-800 px-3 py-1.5 text-sm text-dark-300 hover:text-dark-100 disabled:opacity-50"
           >
             Next →
           </button>
         </div>
       )}
     </div>
+    </AdminLayout>
   );
 }

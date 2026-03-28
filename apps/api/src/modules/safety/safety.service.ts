@@ -6,6 +6,8 @@ import {
 import { PrismaService } from '@/config/prisma.service';
 import { RedisService } from '@/config/redis.service';
 import { AuditService } from '@/common/services/audit.service';
+import { NotificationService } from '@modules/notification/notification.service';
+import { UploadService } from '@common/services/upload.service';
 
 export interface LocationData {
   lat: number;
@@ -23,6 +25,8 @@ export class SafetyService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly audit: AuditService,
+    private readonly notificationService: NotificationService,
+    private readonly uploadService: UploadService,
   ) {}
 
   async triggerSOS(userId: string, bookingId: string, description?: string) {
@@ -31,7 +35,7 @@ export class SafetyService {
     });
 
     if (!booking) throw new NotFoundException('Booking tidak ditemukan');
-    if (booking.clientId !== userId && booking.escortId !== userId) {
+    if (!(await this.isBookingParticipant(userId, booking))) {
       throw new ForbiddenException('Anda tidak terlibat dalam booking ini');
     }
 
@@ -61,6 +65,14 @@ export class SafetyService {
     // 3. Record GPS coordinates
     // 4. Auto-record (if permitted)
 
+    // Notify admins of SOS alert
+    this.notificationService.notifyAdmins(
+      '🚨 SOS Alert!',
+      `SOS darurat dipicu pada booking ${bookingId}. ${description || 'Segera tangani.'}`,
+      'SAFETY',
+      { link: `/incidents`, bookingId, incidentId: incident.id },
+    ).catch(() => {});
+
     return {
       message: 'SOS alert telah dikirim. Tim keamanan akan segera merespons.',
       incidentId: incident.id,
@@ -71,14 +83,27 @@ export class SafetyService {
   async reportIncident(
     userId: string,
     data: { bookingId: string; type: string; description: string; severity: number },
+    files?: Express.Multer.File[],
   ) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: data.bookingId },
     });
 
     if (!booking) throw new NotFoundException('Booking tidak ditemukan');
-    if (booking.clientId !== userId && booking.escortId !== userId) {
+    if (!(await this.isBookingParticipant(userId, booking))) {
       throw new ForbiddenException('Anda tidak terlibat dalam booking ini');
+    }
+
+    // Upload evidence files
+    let evidenceUrls: string[] = [];
+    if (files?.length) {
+      for (const file of files) {
+        const upload = await this.uploadService.saveFile(file, 'incident-evidence', {
+          maxSizeMB: 10,
+          allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'video/mp4'],
+        });
+        evidenceUrls.push(upload.url);
+      }
     }
 
     const incident = await this.prisma.incidentReport.create({
@@ -88,13 +113,23 @@ export class SafetyService {
         type: data.type as any,
         description: data.description,
         severity: Math.min(5, Math.max(1, data.severity)),
+        evidence: evidenceUrls.length > 0 ? evidenceUrls : undefined,
       },
     });
+
+    // Notify admins of new incident report
+    this.notificationService.notifyAdmins(
+      `⚠️ Laporan Insiden (Severity ${data.severity})`,
+      `Insiden baru dilaporkan pada booking ${data.bookingId}: ${data.description.slice(0, 100)}`,
+      'SAFETY',
+      { link: `/incidents`, bookingId: data.bookingId, incidentId: incident.id },
+    ).catch(() => {});
 
     return incident;
   }
 
-  async listIncidents(userId: string, page = 1) {
+  async listIncidents(userId: string, rawPage = 1) {
+    const page = Math.max(1, Number(rawPage) || 1);
     const limit = 10;
     const skip = (page - 1) * limit;
 
@@ -142,6 +177,33 @@ export class SafetyService {
     return incident;
   }
 
+  // ── General Location Ping (no booking required) ──────
+
+  private readonly USER_LOCATION_TTL = 86400; // 24 hours
+
+  async pingUserLocation(
+    userId: string,
+    location: { lat: number; lng: number; accuracy?: number },
+  ) {
+    const locationData: LocationData = {
+      lat: location.lat,
+      lng: location.lng,
+      accuracy: location.accuracy,
+      timestamp: Date.now(),
+    };
+
+    // Store latest known position for this user (independent of bookings)
+    const key = `user_location:${userId}`;
+    await this.redis.setJSON(key, locationData, this.USER_LOCATION_TTL);
+
+    return { success: true, location: locationData };
+  }
+
+  async getUserLastLocation(userId: string): Promise<LocationData | null> {
+    const key = `user_location:${userId}`;
+    return this.redis.getJSON<LocationData>(key);
+  }
+
   // ── Location Tracking (P6-BE-03) ─────────────────────
 
   async updateLocation(
@@ -154,7 +216,7 @@ export class SafetyService {
     });
 
     if (!booking) throw new NotFoundException('Booking tidak ditemukan');
-    if (booking.clientId !== userId && booking.escortId !== userId) {
+    if (!(await this.isBookingParticipant(userId, booking))) {
       throw new ForbiddenException('Anda tidak terlibat dalam booking ini');
     }
 
@@ -222,7 +284,7 @@ export class SafetyService {
 
     // Only participants + admins can view tracking
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    const isParticipant = booking.clientId === userId || booking.escortId === userId;
+    const isParticipant = await this.isBookingParticipant(userId, booking);
     const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
 
     if (!isParticipant && !isAdmin) {
@@ -265,7 +327,7 @@ export class SafetyService {
     if (!booking) throw new NotFoundException('Booking tidak ditemukan');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    const isParticipant = booking.clientId === userId || booking.escortId === userId;
+    const isParticipant = await this.isBookingParticipant(userId, booking);
     const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
 
     if (!isParticipant && !isAdmin) {
@@ -285,12 +347,23 @@ export class SafetyService {
 
   // ── Late Alert Check (P6-BE-07) ──────────────────────
 
-  async checkLateAlert(bookingId: string) {
+  async checkLateAlert(bookingId: string, userId?: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
     });
 
     if (!booking) throw new NotFoundException('Booking tidak ditemukan');
+
+    // Access control: only booking participants or admin can check
+    if (userId) {
+      const isParticipant = await this.isBookingParticipant(userId, booking);
+      if (!isParticipant) {
+        const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+        if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+          throw new ForbiddenException('Akses ditolak');
+        }
+      }
+    }
 
     const now = new Date();
     const startTime = new Date(booking.startTime);
@@ -347,6 +420,22 @@ export class SafetyService {
       checkoutAt: booking.checkoutAt,
       alert,
     };
+  }
+
+  // ── Participant Check (handles escortId as user-ID or profile-ID) ──
+
+  private async isBookingParticipant(
+    userId: string,
+    booking: { clientId: string; escortId: string },
+  ): Promise<boolean> {
+    if (booking.clientId === userId || booking.escortId === userId) return true;
+
+    // Fallback: old bookings may store escort-profile-ID instead of user-ID
+    const profile = await this.prisma.escortProfile.findUnique({
+      where: { id: booking.escortId },
+      select: { userId: true },
+    });
+    return profile?.userId === userId;
   }
 
   // ── Utilities ────────────────────────────────────────

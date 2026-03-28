@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
+import { ClipboardList } from 'lucide-react';
 
 interface Earnings {
   totalEarnings: number;
@@ -14,23 +16,50 @@ interface Earnings {
   totalBookings: number;
 }
 
+interface Withdrawal {
+  id: string;
+  amount: number;
+  bankName: string;
+  bankAccount: string;
+  accountHolder?: string;
+  status: string;
+  createdAt: string;
+  processedAt?: string;
+}
+
+const withdrawStatusConfig: Record<string, { label: string; variant: string }> = {
+  PENDING: { label: 'Menunggu', variant: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' },
+  PROCESSING: { label: 'Diproses', variant: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+  COMPLETED: { label: 'Selesai', variant: 'bg-green-500/10 text-green-400 border-green-500/20' },
+  REJECTED: { label: 'Ditolak', variant: 'bg-red-500/10 text-red-400 border-red-500/20' },
+};
+
 export default function EscortEarningsPage() {
   const [earnings, setEarnings] = useState<Earnings | null>(null);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [bankName, setBankName] = useState('');
   const [bankAccount, setBankAccount] = useState('');
+  const [accountHolder, setAccountHolder] = useState('');
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    loadEarnings();
+    loadData();
   }, []);
 
-  const loadEarnings = async () => {
+  const loadData = async () => {
     try {
-      const res = await api.get('/payments/earnings');
-      setEarnings(res.data);
+      const [earningsRes, withdrawalsRes] = await Promise.all([
+        api.get('/payments/earnings/summary'),
+        api.get('/payments/withdrawals').catch(() => ({ data: { data: [] } })),
+      ]);
+      const earningsPayload = earningsRes.data?.data || earningsRes.data;
+      setEarnings(earningsPayload);
+      const wdPayload = withdrawalsRes.data?.data || withdrawalsRes.data;
+      setWithdrawals(Array.isArray(wdPayload) ? wdPayload : []);
     } catch (err) {
       console.error('Failed to load earnings', err);
     } finally {
@@ -39,18 +68,36 @@ export default function EscortEarningsPage() {
   };
 
   const handleWithdraw = async () => {
+    const amount = Number(withdrawAmount);
+    if (amount < 100000) {
+      setMessage('Jumlah minimal penarikan adalah Rp 100.000');
+      return;
+    }
+    if (earnings && amount > earnings.pendingPayout) {
+      setMessage('Jumlah penarikan melebihi saldo tersedia');
+      return;
+    }
+    if (!bankAccount.trim() || !bankName.trim()) {
+      setMessage('Mohon isi nama bank dan nomor rekening');
+      return;
+    }
+
     setWithdrawLoading(true);
     setMessage('');
     try {
       await api.post('/payments/withdraw', {
-        amount: Number(withdrawAmount),
-        bankAccount,
+        amount,
+        bankName: bankName.trim(),
+        bankAccount: bankAccount.trim(),
+        accountHolder: accountHolder.trim() || undefined,
       });
       setMessage('Permintaan withdraw berhasil diajukan');
       setShowWithdraw(false);
       setWithdrawAmount('');
+      setBankName('');
       setBankAccount('');
-      await loadEarnings();
+      setAccountHolder('');
+      await loadData();
     } catch (err: any) {
       setMessage(err?.response?.data?.message || 'Gagal mengajukan withdraw');
     } finally {
@@ -113,7 +160,7 @@ export default function EscortEarningsPage() {
           <CardContent className="py-5 text-center">
             <p className="text-sm text-dark-400">Total Booking</p>
             <p className="mt-1 text-2xl font-light text-dark-100">
-              {earnings?.totalBookings || 0}
+              {(earnings?.totalBookings || 0).toLocaleString('id-ID')}
             </p>
           </CardContent>
         </Card>
@@ -145,15 +192,31 @@ export default function EscortEarningsPage() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-dark-300">Nomor Rekening Bank</label>
+                <label className="mb-1.5 block text-sm font-medium text-dark-300">Nama Bank</label>
+                <Input
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  placeholder="BCA, BNI, BRI, Mandiri, dll"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-dark-300">Nomor Rekening</label>
                 <Input
                   value={bankAccount}
                   onChange={(e) => setBankAccount(e.target.value)}
-                  placeholder="BCA - 1234567890 - Nama Pemilik"
+                  placeholder="1234567890"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-dark-300">Nama Pemilik Rekening</label>
+                <Input
+                  value={accountHolder}
+                  onChange={(e) => setAccountHolder(e.target.value)}
+                  placeholder="Sesuai nama di buku tabungan"
                 />
               </div>
               <div className="flex gap-3">
-                <Button onClick={handleWithdraw} disabled={withdrawLoading || !withdrawAmount || !bankAccount}>
+                <Button onClick={handleWithdraw} disabled={withdrawLoading || !withdrawAmount || !bankAccount || !bankName}>
                   {withdrawLoading ? 'Memproses...' : 'Ajukan Penarikan'}
                 </Button>
                 <Button variant="outline" onClick={() => setShowWithdraw(false)}>
@@ -165,6 +228,39 @@ export default function EscortEarningsPage() {
             <div className="py-4 text-center text-sm text-dark-500">
               <p>Saldo tersedia untuk penarikan: <span className="font-medium text-brand-400">{formatCurrency(earnings?.pendingPayout || 0)}</span></p>
               <p className="mt-1 text-xs">Penarikan diproses dalam 1-3 hari kerja</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Withdrawal History */}
+      <Card className="mt-6">
+        <CardHeader>
+          <h3 className="text-lg font-medium text-dark-100">Riwayat Penarikan</h3>
+        </CardHeader>
+        <CardContent>
+          {withdrawals.length === 0 ? (
+            <div className="py-8 text-center text-sm text-dark-500">
+              <div className="mb-2"><ClipboardList className="h-7 w-7" /></div>
+              <p>Belum ada riwayat penarikan</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {withdrawals.map((wd) => {
+                const statusCfg = withdrawStatusConfig[wd.status] || withdrawStatusConfig.PENDING;
+                return (
+                  <div key={wd.id} className="flex items-center justify-between rounded-lg border border-dark-700/30 p-4">
+                    <div>
+                      <p className="text-sm font-medium text-dark-200">{formatCurrency(wd.amount)}</p>
+                      <p className="mt-0.5 text-xs text-dark-500">{wd.bankName} - {wd.bankAccount}</p>
+                      <p className="mt-0.5 text-xs text-dark-600">
+                        {new Date(wd.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <Badge className={statusCfg.variant}>{statusCfg.label}</Badge>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>

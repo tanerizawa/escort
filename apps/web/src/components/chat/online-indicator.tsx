@@ -1,5 +1,5 @@
 /**
- * Online status indicator — green/gray dot on avatar
+ * Online status indicator — green/gray dot on avatar with pulse
  */
 export function OnlineIndicator({
   isOnline,
@@ -16,9 +16,9 @@ export function OnlineIndicator({
 
   return (
     <span
-      className={`absolute bottom-0 right-0 block rounded-full ring-2 ring-dark-900 ${
+      className={`absolute bottom-0 right-0 block rounded-full ring-2 ring-dark-900 transition-colors duration-300 ${
         sizeClasses[size]
-      } ${isOnline ? 'bg-green-400' : 'bg-gray-500'}`}
+      } ${isOnline ? 'bg-green-400 animate-pulse' : 'bg-gray-500'}`}
       title={isOnline ? 'Online' : 'Offline'}
     />
   );

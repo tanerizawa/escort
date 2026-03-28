@@ -1,0 +1,86 @@
+# Alert Rules — ARETON.id
+groups:
+  - name: areton_api_alerts
+    rules:
+      # ── High Error Rate ──────────────────────
+      - alert: HighErrorRate
+        expr: rate(areton_http_errors_total[5m]) / rate(areton_http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'High HTTP error rate (> 5%)'
+          description: 'Error rate is {{ $value | humanizePercentage }} over the last 5 minutes.'
+
+      # ── High Latency ────────────────────────
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(areton_http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'High API latency (p95 > 2s)'
+          description: 'p95 latency is {{ $value }}s over the last 5 minutes.'
+
+      # ── API Down ────────────────────────────
+      - alert: APIDown
+        expr: up{job="areton-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'ARETON API is down'
+          description: 'The areton-api target has been down for more than 1 minute.'
+
+  - name: areton_system_alerts
+    rules:
+      # ── High CPU Usage ──────────────────────
+      - alert: HighCPU
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'High CPU usage (> 85%)'
+          description: 'CPU usage is {{ $value }}% for the last 10 minutes.'
+
+      # ── High Memory Usage ───────────────────
+      - alert: HighMemory
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'High memory usage (> 90%)'
+          description: 'Memory usage is {{ $value }}%.'
+
+      # ── Disk Space Low ──────────────────────
+      - alert: DiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Disk space low (> 85% used)'
+          description: 'Disk usage is {{ $value }}%.'
+
+  - name: areton_business_alerts
+    rules:
+      # ── No Bookings (business hours) ────────
+      - alert: NoBookings
+        expr: increase(areton_bookings_total[1h]) == 0
+        for: 3h
+        labels:
+          severity: info
+        annotations:
+          summary: 'No new bookings in last 3 hours'
+
+      # ── Payment Failures ────────────────────
+      - alert: PaymentFailures
+        expr: rate(areton_payments_total{status="FAILED"}[15m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Payment failure rate increasing'
+          description: 'Payment failures detected at {{ $value }}/s over the last 15 minutes.'

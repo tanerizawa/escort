@@ -1,6 +1,14 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
 
+// Optional Sentry integration — loaded lazily
+let sentryModule: any = null;
+try {
+  sentryModule = require('@sentry/node');
+} catch {
+  // @sentry/node not installed — will skip error capture
+}
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
@@ -29,9 +37,25 @@ export class HttpExceptionFilter implements ExceptionFilter {
           message = 'Validation failed';
         }
       }
+
+      // Log validation errors with request body for debugging
+      if (status === 400) {
+        this.logger.warn(`400 on ${request.method} ${request.url}: msg=${JSON.stringify(message)} errors=${JSON.stringify(errors)} body=${JSON.stringify(request.body)}`);
+      }
     } else if (exception instanceof Error) {
       message = exception.message;
       this.logger.error(`Unhandled error: ${exception.message}`, exception.stack);
+
+      // Capture unhandled errors in Sentry (500s only)
+      if (sentryModule) {
+        sentryModule.withScope((scope: any) => {
+          scope.setTag('url', request.url);
+          scope.setTag('method', request.method);
+          scope.setExtra('body', request.body);
+          scope.setExtra('query', request.query);
+          sentryModule.captureException(exception);
+        });
+      }
     }
 
     const errorResponse = {

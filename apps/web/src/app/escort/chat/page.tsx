@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import api from '@/lib/api';
+import { MessageCircle } from 'lucide-react';
 
 interface ChatRoom {
   bookingId: string;
@@ -32,7 +33,8 @@ export default function EscortChatListPage() {
   const loadRooms = async () => {
     try {
       const res = await api.get('/chats');
-      setRooms(res.data || []);
+      const d = res.data?.data || res.data;
+      setRooms(Array.isArray(d) ? d : []);
     } catch (err) {
       console.error('Failed to load chat rooms', err);
     } finally {
@@ -67,7 +69,7 @@ export default function EscortChatListPage() {
         <Card>
           <CardContent>
             <div className="py-16 text-center">
-              <div className="mb-4 text-4xl">💬</div>
+              <div className="mb-4"><MessageCircle className="h-10 w-10" /></div>
               <h3 className="text-lg font-light text-dark-200">Belum Ada Pesan</h3>
               <p className="mt-2 text-sm text-dark-500">
                 Percakapan akan muncul setelah booking dikonfirmasi.
@@ -85,7 +87,7 @@ export default function EscortChatListPage() {
             >
               <div className="flex items-center gap-4">
                 <div className="relative shrink-0">
-                  {room.otherUser.profilePhoto ? (
+                  {room?.otherUser?.profilePhoto ? (
                     <img
                       src={room.otherUser.profilePhoto}
                       alt=""
@@ -94,7 +96,7 @@ export default function EscortChatListPage() {
                   ) : (
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-400/10">
                       <span className="text-lg font-medium text-brand-400">
-                        {room.otherUser.firstName[0]}
+                        {room?.otherUser?.firstName?.[0] || '?'}
                       </span>
                     </div>
                   )}
@@ -108,7 +110,7 @@ export default function EscortChatListPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <h3 className={`text-sm font-medium ${room.unreadCount > 0 ? 'text-dark-100' : 'text-dark-300'}`}>
-                      {room.otherUser.firstName} {room.otherUser.lastName}
+                      {room?.otherUser?.firstName} {room?.otherUser?.lastName}
                     </h3>
                     {room.lastMessage && (
                       <span className="text-xs text-dark-500">

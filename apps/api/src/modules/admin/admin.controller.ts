@@ -45,6 +45,18 @@ export class AdminController {
     return this.adminService.listUsers(page, limit, role, search);
   }
 
+  @Get('users/:id')
+  @ApiOperation({ summary: 'Get user detail by ID' })
+  async getUserDetail(@Param('id') userId: string) {
+    return this.adminService.getUserDetail(userId);
+  }
+
+  @Get('users/:id/location')
+  @ApiOperation({ summary: 'Get user live location from active bookings' })
+  async getUserLocation(@Param('id') userId: string) {
+    return this.adminService.getUserLiveLocation(userId);
+  }
+
   @Get('escorts/pending')
   @ApiOperation({ summary: 'List escorts pending verification' })
   async getPendingEscorts(@Query('page') page?: number) {
@@ -67,6 +79,18 @@ export class AdminController {
     @Body() body: { isActive: boolean; reason?: string },
   ) {
     return this.adminService.updateUserStatus(userId, body.isActive);
+  }
+
+  @Get('bookings/monitor')
+  @ApiOperation({ summary: 'Get active bookings with live tracking for monitoring' })
+  async getActiveBookingsMonitor() {
+    return this.adminService.getActiveBookingsMonitor();
+  }
+
+  @Get('bookings/:id/monitor')
+  @ApiOperation({ summary: 'Get detailed booking monitor view with tracking, timeline, chat' })
+  async getBookingMonitorDetail(@Param('id') bookingId: string) {
+    return this.adminService.getBookingMonitorDetail(bookingId);
   }
 
   @Get('incidents')
@@ -197,5 +221,22 @@ export class AdminController {
   @ApiOperation({ summary: 'Delete promo code' })
   async deletePromoCode(@Param('id') id: string) {
     return this.adminService.deletePromoCode(id);
+  }
+
+  // ── Certifications ──────────────────────────────────
+
+  @Get('certifications/pending')
+  @ApiOperation({ summary: 'List pending certifications' })
+  async getPendingCertifications(@Query('page') page?: number) {
+    return this.adminService.getPendingCertifications(page ? Number(page) : 1);
+  }
+
+  @Patch('certifications/:id/verify')
+  @ApiOperation({ summary: 'Approve or reject a certification' })
+  async verifyCertification(
+    @Param('id') certId: string,
+    @Body() body: { approved: boolean },
+  ) {
+    return this.adminService.verifyCertification(certId, body.approved);
   }
 }

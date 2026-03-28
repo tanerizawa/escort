@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -12,25 +12,51 @@ interface AuthGuardProps {
 export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
   const router = useRouter();
   const { isAuthenticated, user, fetchProfile } = useAuthStore();
+  const checking = useRef(false);
+  const [validated, setValidated] = useState(false);
+
+  // Always validate the token on mount — persisted state might have stale tokens
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      // No token at all — go to login
+      useAuthStore.getState().setUser(null);
+      router.push('/login');
+      return;
+    }
+
+    if (!checking.current) {
+      checking.current = true;
+      fetchProfile()
+        .then(() => setValidated(true))
+        .catch(() => {
+          // Token invalid/expired and refresh failed
+          router.push('/login');
+        })
+        .finally(() => {
+          checking.current = false;
+        });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      const token = localStorage.getItem('accessToken');
-      if (token) {
-        fetchProfile();
+    if (isAuthenticated && user && allowedRoles && !allowedRoles.includes(user.role)) {
+      // Redirect to the correct dashboard based on role
+      if (user.role === 'ESCORT') {
+        router.push('/escort/dashboard');
+      } else if (user.role === 'CLIENT') {
+        router.push('/user/dashboard');
+      } else if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+        window.location.href = process.env.NEXT_PUBLIC_ADMIN_URL || 'https://admin.areton.id';
       } else {
         router.push('/login');
       }
     }
-  }, [isAuthenticated, fetchProfile, router]);
-
-  useEffect(() => {
-    if (isAuthenticated && user && allowedRoles && !allowedRoles.includes(user.role)) {
-      router.push('/unauthorized');
-    }
   }, [isAuthenticated, user, allowedRoles, router]);
 
-  if (!isAuthenticated) {
+  // Show loading until token is validated against the server
+  if (!validated || !isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-3">

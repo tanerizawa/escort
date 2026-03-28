@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -6,6 +6,9 @@ import { randomBytes, createHmac } from 'crypto';
 import { PrismaService } from '@/config/prisma.service';
 import { RedisService } from '@/config/redis.service';
 import { AuditService } from '@/common/services/audit.service';
+import { EmailService } from '@modules/notification/email.service';
+import { NotificationService } from '@modules/notification/notification.service';
+import { AppleAuthService } from './services/apple-auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -13,12 +16,17 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly redis: RedisService,
     private readonly audit: AuditService,
+    private readonly emailService: EmailService,
+    private readonly notificationService: NotificationService,
+    private readonly appleAuth: AppleAuthService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -54,21 +62,35 @@ export class AuthService {
       },
     });
 
-    // If registering as escort, create escort profile
+    // If registering as escort, create escort profile with submitted data
     if (dto.role === 'ESCORT') {
       await this.prisma.escortProfile.create({
         data: {
           userId: user.id,
-          hourlyRate: 0,
-          languages: [],
-          skills: [],
-          portfolioUrls: [],
+          bio: dto.bio || null,
+          hourlyRate: dto.hourlyRate || 0,
+          languages: dto.languages || [],
+          skills: dto.skills || [],
+          portfolioUrls: dto.portfolioUrls || [],
         },
       });
+
+      // Notify admins of new escort registration
+      this.notificationService.notifyAdmins(
+        'Escort Baru Mendaftar',
+        `${user.firstName} ${user.lastName} mendaftar sebagai escort dan menunggu verifikasi profil.`,
+        'SYSTEM',
+        { link: '/escorts/pending' },
+      ).catch(() => {});
     }
 
     // Generate tokens
     const tokens = await this.generateTokens(user.id, user.role);
+
+    // Send email verification (fire & forget)
+    this.sendVerificationEmail(user.id, user.email, user.firstName).catch((err) => {
+      this.logger.error(`Failed to send verification email to ${user.email}: ${err?.message}`);
+    });
 
     return {
       user,
@@ -77,6 +99,13 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
+    // Check account lockout
+    const lockKey = `login_lock:${dto.email}`;
+    const isLocked = await this.redis.get(lockKey);
+    if (isLocked) {
+      throw new UnauthorizedException('Akun terkunci sementara. Coba lagi dalam 15 menit.');
+    }
+
     // Find user
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -93,8 +122,34 @@ export class AuthService {
     // Verify password
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
+      // Track failed attempts
+      const attemptKey = `login_attempts:${dto.email}`;
+      const attempts = parseInt(await this.redis.get(attemptKey) || '0') + 1;
+      await this.redis.set(attemptKey, String(attempts), 900); // 15 min window
+      if (attempts >= 5) {
+        await this.redis.set(lockKey, '1', 900); // Lock for 15 min
+        await this.audit.log({
+          userId: user.id,
+          action: 'ACCOUNT_LOCKED',
+          resource: 'auth',
+          severity: 'WARN',
+          details: { reason: 'too_many_failed_logins', attempts },
+        });
+      }
+      // Audit failed login
+      await this.audit.log({
+        userId: user.id,
+        action: 'LOGIN_FAILED',
+        resource: 'auth',
+        severity: 'WARN',
+        details: { reason: 'invalid_password', attempt: attempts },
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    // Clear failed attempts on success
+    await this.redis.del(`login_attempts:${dto.email}`);
+    await this.redis.del(lockKey);
 
     // Update last login
     await this.prisma.user.update({
@@ -175,9 +230,8 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    // Always return success to prevent email enumeration
     if (!user) {
-      return { message: 'If the email exists, a reset link has been sent' };
+      throw new NotFoundException('Email tidak terdaftar di sistem kami');
     }
 
     // Generate reset token
@@ -191,8 +245,14 @@ export class AuthService {
     );
 
     // TODO: Send email via SendGrid/Nodemailer
-    // const resetUrl = `${this.config.get('app.frontendUrl')}/reset-password?token=${resetToken}`;
-    // await this.emailService.sendPasswordReset(user.email, resetUrl);
+    const frontendUrl = this.config.get('app.webUrl') || 'https://areton.id';
+    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+    this.emailService.sendPasswordReset(user.email, {
+      name: user.firstName || 'User',
+      resetUrl,
+    }).catch((err) => {
+      this.logger.error(`Failed to send password reset email to ${user.email}: ${err?.message}`);
+    });
 
     return {
       message: 'If the email exists, a reset link has been sent',
@@ -499,5 +559,354 @@ export class AuthService {
     ]);
 
     return { accessToken, refreshToken };
+  }
+
+  // ── Email Verification ─────────────────
+
+  private async sendVerificationEmail(userId: string, email: string, firstName: string) {
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const token = randomBytes(32).toString('hex');
+
+    // Store in Redis with 24h expiry
+    await this.redis.set(
+      `email_verify:${token}`,
+      JSON.stringify({ userId, email, code }),
+      24 * 60 * 60,
+    );
+    // Also store code-based lookup
+    await this.redis.set(
+      `email_verify_code:${userId}`,
+      JSON.stringify({ token, code }),
+      24 * 60 * 60,
+    );
+
+    const frontendUrl = this.config.get('app.webUrl') || 'https://areton.id';
+    const verifyUrl = `${frontendUrl}/verify-email?token=${token}`;
+
+    return this.emailService.sendEmailVerification(email, {
+      name: firstName,
+      verifyUrl,
+      code,
+    });
+  }
+
+  async verifyEmail(token?: string, code?: string, userId?: string) {
+    let verifyData: { userId: string; email: string; code: string } | null = null;
+
+    if (token) {
+      // Token-based verification (link click)
+      const stored = await this.redis.get(`email_verify:${token}`);
+      if (!stored) throw new BadRequestException('Token verifikasi tidak valid atau telah kadaluarsa');
+      verifyData = JSON.parse(stored);
+    } else if (code && userId) {
+      // Code-based verification (manual input)
+      const stored = await this.redis.get(`email_verify_code:${userId}`);
+      if (!stored) throw new BadRequestException('Kode verifikasi telah kadaluarsa. Silakan minta kode baru.');
+      const { token: storedToken, code: storedCode } = JSON.parse(stored);
+      if (storedCode !== code) throw new BadRequestException('Kode verifikasi salah');
+      const tokenData = await this.redis.get(`email_verify:${storedToken}`);
+      if (!tokenData) throw new BadRequestException('Token verifikasi telah kadaluarsa');
+      verifyData = JSON.parse(tokenData);
+      // Clean up the token too
+      await this.redis.del(`email_verify:${storedToken}`);
+    } else {
+      throw new BadRequestException('Token atau kode verifikasi diperlukan');
+    }
+
+    // Update user
+    await this.prisma.user.update({
+      where: { id: verifyData!.userId },
+      data: { emailVerifiedAt: new Date() },
+    });
+
+    // Clean up Redis
+    if (token) await this.redis.del(`email_verify:${token}`);
+    await this.redis.del(`email_verify_code:${verifyData!.userId}`);
+
+    // Send welcome email now that email is verified
+    this.emailService.sendWelcome(verifyData!.email, {
+      name: (await this.prisma.user.findUnique({ where: { id: verifyData!.userId }, select: { firstName: true } }))?.firstName || 'User',
+    }).catch((err) => {
+      this.logger.error(`Failed to send welcome email to ${verifyData!.email}: ${err?.message}`);
+    });
+
+    return { message: 'Email berhasil diverifikasi' };
+  }
+
+  async resendVerification(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, firstName: true, emailVerifiedAt: true },
+    });
+
+    if (!user) throw new NotFoundException('User tidak ditemukan');
+    if (user.emailVerifiedAt) throw new BadRequestException('Email sudah terverifikasi');
+
+    // Rate limit: 1 resend per 2 minutes
+    const rateLimitKey = `email_verify_ratelimit:${userId}`;
+    const existing = await this.redis.get(rateLimitKey);
+    if (existing) throw new BadRequestException('Tunggu 2 menit sebelum mengirim ulang');
+    await this.redis.set(rateLimitKey, '1', 120);
+
+    // Clean up old tokens
+    const oldCode = await this.redis.get(`email_verify_code:${userId}`);
+    if (oldCode) {
+      const { token: oldToken } = JSON.parse(oldCode);
+      await this.redis.del(`email_verify:${oldToken}`);
+      await this.redis.del(`email_verify_code:${userId}`);
+    }
+
+    await this.sendVerificationEmail(user.id, user.email, user.firstName);
+    return { message: 'Email verifikasi telah dikirim ulang' };
+  }
+
+  // ── Google OAuth ─────────────────────────────────────
+
+  async googleLogin(googleUser: {
+    googleId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    profilePhoto: string;
+  }) {
+    if (!googleUser?.email) {
+      throw new UnauthorizedException('Google login gagal — email tidak ditemukan');
+    }
+
+    // Check if user already exists by email
+    let user = await this.prisma.user.findUnique({
+      where: { email: googleUser.email },
+    });
+
+    if (user) {
+      // Update Google profile photo if not set
+      if (!user.profilePhoto && googleUser.profilePhoto) {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { profilePhoto: googleUser.profilePhoto },
+        });
+      }
+    } else {
+      // Create new user from Google profile
+      const randomPassword = randomBytes(32).toString('hex');
+      const passwordHash = await bcrypt.hash(randomPassword, 12);
+
+      user = await this.prisma.user.create({
+        data: {
+          email: googleUser.email,
+          firstName: googleUser.firstName,
+          lastName: googleUser.lastName,
+          profilePhoto: googleUser.profilePhoto,
+          passwordHash,
+          isVerified: true, // Google-verified email
+          role: 'CLIENT',
+        },
+      });
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('Akun dinonaktifkan');
+    }
+
+    // Update last login
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    await this.audit.log({
+      userId: user.id,
+      action: 'GOOGLE_LOGIN',
+      resource: 'auth',
+      severity: 'INFO',
+    });
+
+    const tokens = await this.generateTokens(user.id, user.role);
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        profilePhoto: user.profilePhoto,
+        isVerified: user.isVerified,
+      },
+      ...tokens,
+    };
+  }
+
+  // ── OTP Service ──────────────────────────────────────
+
+  async sendOTP(phone: string) {
+    // Rate limit: max 3 OTPs per phone per hour (check BEFORE generating)
+    const otpCountKey = `otp_count:${phone}`;
+    const currentCount = await this.redis.get(otpCountKey);
+    if (currentCount && parseInt(currentCount) >= 3) {
+      throw new BadRequestException('Terlalu banyak permintaan OTP. Coba lagi dalam 1 jam.');
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store OTP in Redis with 5 min expiry
+    await this.redis.set(`otp:${phone}`, otp, 300);
+
+    // Increment rate limit counter
+    await this.redis.set(otpCountKey, String((parseInt(currentCount || '0') + 1)), 3600);
+
+    // TODO: Send via Twilio/SMS provider when credentials available
+    const isDev = this.config.get('app.nodeEnv') === 'development';
+
+    if (isDev) {
+      console.log(`[OTP] Phone: ${phone}, Code: ${otp}`);
+    }
+
+    return {
+      message: 'OTP berhasil dikirim',
+      expiresIn: 300,
+      ...(isDev && { otp }), // Only expose in development
+    };
+  }
+
+  async verifyOTP(phone: string, code: string) {
+    // Brute force protection: max 5 verification attempts per OTP
+    const attemptKey = `otp_attempts:${phone}`;
+    const attempts = parseInt(await this.redis.get(attemptKey) || '0');
+    if (attempts >= 5) {
+      await this.redis.del(`otp:${phone}`);
+      await this.redis.del(attemptKey);
+      throw new BadRequestException('Terlalu banyak percobaan. OTP telah expired. Silakan minta OTP baru.');
+    }
+
+    const storedOTP = await this.redis.get(`otp:${phone}`);
+
+    if (!storedOTP) {
+      throw new BadRequestException('OTP expired atau tidak ditemukan');
+    }
+
+    if (storedOTP !== code) {
+      await this.redis.set(attemptKey, String(attempts + 1), 300); // Track attempt
+      throw new BadRequestException('Kode OTP tidak valid');
+    }
+
+    // Delete used OTP and attempts
+    await this.redis.del(`otp:${phone}`);
+    await this.redis.del(attemptKey);
+
+    // Find user by phone
+    const user = await this.prisma.user.findFirst({
+      where: { phone },
+    });
+
+    if (!user) {
+      // Phone not registered yet — return verification status
+      return {
+        verified: true,
+        userExists: false,
+        message: 'Nomor terverifikasi. Silakan daftar akun.',
+      };
+    }
+
+    // Generate tokens for existing user
+    const tokens = await this.generateTokens(user.id, user.role);
+
+    await this.audit.log({
+      userId: user.id,
+      action: 'OTP_LOGIN',
+      resource: 'auth',
+      severity: 'INFO',
+    });
+
+    return {
+      verified: true,
+      userExists: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      },
+      ...tokens,
+    };
+  }
+
+  // ── Apple Sign-in ─────────────────────────────────────
+
+  async appleLogin(dto: {
+    idToken: string;
+    authorizationCode?: string;
+    firstName?: string;
+    lastName?: string;
+    nonce?: string;
+  }) {
+    // 1. Verify the Apple ID token
+    const appleUser = await this.appleAuth.verifyIdToken(dto.idToken, dto.nonce);
+
+    if (!appleUser?.email) {
+      throw new UnauthorizedException('Apple login gagal — email tidak ditemukan');
+    }
+
+    // 2. Find or create user
+    let user = await this.prisma.user.findUnique({
+      where: { email: appleUser.email },
+    });
+
+    if (user) {
+      // Existing user — just log in
+      if (!user.isActive) {
+        throw new UnauthorizedException('Akun dinonaktifkan');
+      }
+    } else {
+      // Create new user from Apple profile
+      // Apple only sends name on first authorization, so use provided names or defaults
+      const firstName = dto.firstName || 'Apple';
+      const lastName = dto.lastName || 'User';
+      const randomPassword = randomBytes(32).toString('hex');
+      const passwordHash = await bcrypt.hash(randomPassword, 12);
+
+      user = await this.prisma.user.create({
+        data: {
+          email: appleUser.email,
+          firstName,
+          lastName,
+          passwordHash,
+          isVerified: appleUser.emailVerified,
+          role: 'CLIENT',
+        },
+      });
+    }
+
+    // 3. Update last login
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    await this.audit.log({
+      userId: user.id,
+      action: 'APPLE_LOGIN',
+      resource: 'auth',
+      severity: 'INFO',
+    });
+
+    // 4. Generate tokens
+    const tokens = await this.generateTokens(user.id, user.role);
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        profilePhoto: user.profilePhoto,
+        isVerified: user.isVerified,
+      },
+      ...tokens,
+    };
   }
 }

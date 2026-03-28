@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "Areton",
+    "slug": "areton",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "areton",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b1120"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "id.areton.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Areton needs your location to show nearby escorts and for safety tracking during bookings.",
+        "NSLocationAlwaysUsageDescription": "Areton tracks location during active bookings for safety.",
+        "NSCameraUsageDescription": "Upload profile photos and send images in chat.",
+        "NSPhotoLibraryUsageDescription": "Select photos from your library."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0b1120"
+      },
+      "package": "id.areton.app",
+      "newArchEnabled": false,
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-location",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#c9a96e"
+        }
+      ],
+      "expo-image-picker",
+      "expo-font",
+      "@react-native-community/datetimepicker"
+    ],
+    "extra": {
+      "apiUrl": "https://api.areton.id/api",
+      "eas": {
+        "projectId": "16a31603-5762-473e-907d-035cc9606584"
+      }
+    },
+    "owner": "tanerizawa"
+  }
+}

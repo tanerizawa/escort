@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsEnum, IsPhoneNumber } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsEnum, IsNumber, IsArray, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterDto {
@@ -30,4 +30,46 @@ export class RegisterDto {
   @IsOptional()
   @IsEnum(['CLIENT', 'ESCORT'])
   role?: 'CLIENT' | 'ESCORT';
+
+  // ── Escort-specific fields (only used when role = ESCORT) ──
+
+  @ApiPropertyOptional({ description: 'Escort bio text' })
+  @IsOptional()
+  @IsString()
+  bio?: string;
+
+  @ApiPropertyOptional({ description: 'Languages spoken', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  languages?: string[];
+
+  @ApiPropertyOptional({ description: 'Professional skills', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  skills?: string[];
+
+  @ApiPropertyOptional({ description: 'Hourly rate in IDR', minimum: 100000 })
+  @IsOptional()
+  @IsNumber()
+  @Min(100000)
+  hourlyRate?: number;
+
+  @ApiPropertyOptional({ description: 'Escort tier' })
+  @IsOptional()
+  @IsString()
+  tier?: string;
+
+  @ApiPropertyOptional({ description: 'Certification names', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  certificationNames?: string[];
+
+  @ApiPropertyOptional({ description: 'Portfolio URLs', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  portfolioUrls?: string[];
 }

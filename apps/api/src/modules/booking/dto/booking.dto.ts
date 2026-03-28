@@ -1,13 +1,15 @@
-import { IsString, IsDateString, IsNumber, IsOptional, IsArray, Min, MinLength } from 'class-validator';
+import { IsString, IsDateString, IsNumber, IsOptional, IsArray, IsObject, IsNotEmpty, Min, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateBookingDto {
   @ApiProperty({ description: 'Escort user ID' })
   @IsString()
+  @IsNotEmpty()
   escortId: string;
 
   @ApiProperty({ description: 'Service type (e.g., DINING, EVENT, TRAVEL)' })
   @IsString()
+  @IsNotEmpty()
   serviceType: string;
 
   @ApiProperty({ description: 'Start time ISO string' })
@@ -59,6 +61,8 @@ export class UpdateAvailabilityDto {
     description: 'Weekly availability schedule (0=Sun...6=Sat)',
     example: { 1: { start: '09:00', end: '21:00' }, 2: { start: '09:00', end: '21:00' } },
   })
+  @IsObject()
+  @IsNotEmpty()
   schedule: Record<string, { start: string; end: string }>;
 
   @ApiPropertyOptional({ description: 'Blocked date ranges' })
@@ -103,4 +107,14 @@ export class BookingQueryDto {
   @IsOptional()
   @IsString()
   status?: string;
+
+  @ApiPropertyOptional({ description: 'Filter bookings starting from this date (ISO string)' })
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @ApiPropertyOptional({ description: 'Filter bookings ending before this date (ISO string)' })
+  @IsOptional()
+  @IsString()
+  endDate?: string;
 }

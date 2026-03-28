@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { SafetyController } from './safety.controller';
 import { SafetyService } from './safety.service';
+import { NotificationModule } from '@modules/notification/notification.module';
 
 @Module({
+  imports: [NotificationModule],
   controllers: [SafetyController],
   providers: [SafetyService],
   exports: [SafetyService],

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Star } from 'lucide-react';
 import api from '@/lib/api';
 
 interface Review {
@@ -101,7 +102,7 @@ export function ReviewList({ escortId, showTitle = true }: ReviewListProps) {
           <div className="text-center sm:pr-6 sm:border-r sm:border-dark-700">
             <p className="text-4xl font-light text-dark-100">{averageRating.toFixed(1)}</p>
             <div className="mt-1 flex justify-center">{renderStars(Math.round(averageRating))}</div>
-            <p className="mt-1 text-xs text-dark-500">{totalReviews} ulasan</p>
+            <p className="mt-1 text-xs text-dark-500">{totalReviews.toLocaleString('id-ID')} ulasan</p>
           </div>
 
           {/* Distribution */}
@@ -128,7 +129,7 @@ export function ReviewList({ escortId, showTitle = true }: ReviewListProps) {
       {/* Reviews List */}
       {reviews.length === 0 ? (
         <div className="rounded-xl border border-dark-700/50 bg-dark-800/50 py-12 text-center">
-          <div className="mb-3 text-3xl">⭐</div>
+          <div className="mb-3 flex justify-center"><Star className="h-8 w-8 text-brand-400" /></div>
           <p className="text-sm text-dark-500">Belum ada ulasan</p>
         </div>
       ) : (
@@ -139,7 +140,7 @@ export function ReviewList({ escortId, showTitle = true }: ReviewListProps) {
               className="rounded-xl border border-dark-700/50 bg-dark-800/50 p-5"
             >
               <div className="flex items-start gap-3">
-                {review.client.profilePhoto ? (
+                {review?.client?.profilePhoto ? (
                   <img
                     src={review.client.profilePhoto}
                     alt=""
@@ -148,14 +149,14 @@ export function ReviewList({ escortId, showTitle = true }: ReviewListProps) {
                 ) : (
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-400/10">
                     <span className="text-sm font-medium text-brand-400">
-                      {review.client.firstName[0]}
+                      {review?.client?.firstName?.[0] || '?'}
                     </span>
                   </div>
                 )}
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-medium text-dark-200">
-                      {review.client.firstName} {review.client.lastName[0]}.
+                      {review?.client?.firstName} {review?.client?.lastName?.[0]}.
                     </h4>
                     <span className="text-xs text-dark-500">{formatDate(review.createdAt)}</span>
                   </div>

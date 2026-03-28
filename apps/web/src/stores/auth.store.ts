@@ -2,6 +2,14 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api from '@/lib/api';
 
+function setAuthCookie(value: boolean) {
+  if (value) {
+    document.cookie = 'areton_auth=1; path=/; max-age=604800; SameSite=Lax';
+  } else {
+    document.cookie = 'areton_auth=; path=/; max-age=0';
+  }
+}
+
 interface User {
   id: string;
   email: string;
@@ -49,6 +57,7 @@ export const useAuthStore = create<AuthState>()(
           localStorage.setItem('accessToken', accessToken);
           localStorage.setItem('refreshToken', refreshToken);
 
+          setAuthCookie(true);
           set({ user, isAuthenticated: true, isLoading: false });
         } catch (error) {
           set({ isLoading: false });
@@ -64,7 +73,9 @@ export const useAuthStore = create<AuthState>()(
 
           localStorage.setItem('accessToken', accessToken);
           localStorage.setItem('refreshToken', refreshToken);
+          localStorage.setItem('pendingVerificationUserId', user.id);
 
+          setAuthCookie(true);
           set({ user, isAuthenticated: true, isLoading: false });
         } catch (error) {
           set({ isLoading: false });
@@ -83,6 +94,7 @@ export const useAuthStore = create<AuthState>()(
         } finally {
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
+          setAuthCookie(false);
           set({ user: null, isAuthenticated: false });
         }
       },
@@ -90,8 +102,12 @@ export const useAuthStore = create<AuthState>()(
       fetchProfile: async () => {
         try {
           const response = await api.get('/users/me');
+          setAuthCookie(true);
           set({ user: response.data.data, isAuthenticated: true });
         } catch {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          setAuthCookie(false);
           set({ user: null, isAuthenticated: false });
         }
       },

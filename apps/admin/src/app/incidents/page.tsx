@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import AdminLayout from '@/components/admin-layout';
 
 interface Incident {
   id: string;
@@ -52,6 +53,7 @@ export default function AdminIncidentsPage() {
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [adminNotes, setAdminNotes] = useState('');
   const [resolving, setResolving] = useState(false);
+  const [error, setError] = useState('');
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 0 });
 
   const fetchIncidents = useCallback(async () => {
@@ -68,16 +70,18 @@ export default function AdminIncidentsPage() {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        setIncidents(data.data || []);
+        const json = await res.json();
+        const payload = json.data || json;
+        const list = payload?.data || payload;
+        setIncidents(Array.isArray(list) ? list : []);
         setPagination((prev) => ({
           ...prev,
-          total: data.pagination?.total || 0,
-          totalPages: data.pagination?.totalPages || 0,
+          total: payload?.pagination?.total || payload?.total || 0,
+          totalPages: payload?.pagination?.totalPages || payload?.totalPages || 0,
         }));
       }
-    } catch {
-      /* handle silently */
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Gagal memuat data insiden');
     } finally {
       setLoading(false);
     }
@@ -92,7 +96,7 @@ export default function AdminIncidentsPage() {
     setResolving(true);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/disputes/${incidentId}/resolve`,
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/incidents/${incidentId}/resolve`,
         {
           method: 'PATCH',
           headers: {
@@ -107,9 +111,11 @@ export default function AdminIncidentsPage() {
         setSelectedIncident(null);
         setAdminNotes('');
         fetchIncidents();
+      } else {
+        setError('Gagal menyelesaikan insiden');
       }
-    } catch {
-      /* handle silently */
+    } catch (err: any) {
+      setError(err?.message || 'Gagal menyelesaikan insiden');
     } finally {
       setResolving(false);
     }
@@ -127,6 +133,7 @@ export default function AdminIncidentsPage() {
   const statusTabs = ['OPEN', 'INVESTIGATING', 'RESOLVED', 'DISMISSED', 'ALL'];
 
   return (
+    <AdminLayout>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -140,25 +147,37 @@ export default function AdminIncidentsPage() {
           <div className="flex items-center gap-1.5 rounded-lg bg-red-500/10 px-3 py-1.5">
             <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
             <span className="text-sm text-red-400">
-              {incidents.filter((i) => i.resolutionStatus === 'OPEN' && i.severity === 'CRITICAL').length} Critical
+              {incidents.filter((i) => i.severity === 'CRITICAL').length} Critical
             </span>
           </div>
         </div>
       </div>
 
+      {error && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+          <button onClick={() => { setError(''); fetchIncidents(); }} className="ml-3 text-xs underline hover:text-red-300">Coba lagi</button>
+        </div>
+      )}
+
       {/* Stats Bar */}
-      <div className="grid grid-cols-4 gap-4">
-        {[
-          { label: 'Open', count: incidents.filter((i) => i.resolutionStatus === 'OPEN').length, color: 'text-red-400' },
-          { label: 'Investigating', count: incidents.filter((i) => i.resolutionStatus === 'INVESTIGATING').length, color: 'text-yellow-400' },
-          { label: 'Resolved', count: incidents.filter((i) => i.resolutionStatus === 'RESOLVED').length, color: 'text-emerald-400' },
-          { label: 'Total', count: pagination.total, color: 'text-dark-200' },
-        ].map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-dark-700/30 bg-dark-800/30 p-4">
-            <p className="text-sm text-dark-400">{stat.label}</p>
-            <p className={`mt-1 text-2xl font-semibold ${stat.color}`}>{stat.count}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="rounded-xl border border-dark-700/30 bg-dark-800/30 p-4">
+          <p className="text-sm text-dark-400">{activeTab === 'ALL' ? 'Semua' : activeTab}</p>
+          <p className="mt-1 text-2xl font-semibold text-dark-200">{pagination.total}</p>
+        </div>
+        <div className="rounded-xl border border-dark-700/30 bg-dark-800/30 p-4">
+          <p className="text-sm text-dark-400">Halaman ini</p>
+          <p className="mt-1 text-2xl font-semibold text-dark-200">{incidents.length}</p>
+        </div>
+        <div className="rounded-xl border border-dark-700/30 bg-dark-800/30 p-4">
+          <p className="text-sm text-dark-400">Halaman</p>
+          <p className="mt-1 text-2xl font-semibold text-dark-200">{pagination.page}/{pagination.totalPages || 1}</p>
+        </div>
+        <div className="rounded-xl border border-dark-700/30 bg-dark-800/30 p-4">
+          <p className="text-sm text-dark-400">Critical (page)</p>
+          <p className="mt-1 text-2xl font-semibold text-red-400">{incidents.filter((i) => i.severity === 'CRITICAL').length}</p>
+        </div>
       </div>
 
       {/* Filters */}
@@ -404,5 +423,6 @@ export default function AdminIncidentsPage() {
         </div>
       )}
     </div>
+    </AdminLayout>
   );
 }

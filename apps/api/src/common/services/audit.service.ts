@@ -74,7 +74,9 @@ export class AuditService {
     page?: number;
     limit?: number;
   }) {
-    const { page = 1, limit = 20 } = filters;
+    const { page: rawPage = 1, limit: rawLimit = 20 } = filters;
+    const page = Math.max(1, Number(rawPage) || 1);
+    const limit = Math.max(1, Math.min(100, Number(rawLimit) || 20));
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -104,7 +106,8 @@ export class AuditService {
     };
   }
 
-  async getUserAuditTrail(userId: string, limit = 50) {
+  async getUserAuditTrail(userId: string, rawLimit = 50) {
+    const limit = Math.max(1, Math.min(200, Number(rawLimit) || 50));
     return this.prisma.auditLog.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },

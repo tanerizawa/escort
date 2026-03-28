@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import api from '@/lib/api';
+import { ClipboardList } from 'lucide-react';
 
 interface Booking {
   id: string;
@@ -35,7 +37,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 
 export default function EscortRequestsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [filter, setFilter] = useState<'PENDING' | 'all'>('PENDING');
+  const [filter, setFilter] = useState<'PENDING' | 'CONFIRMED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED' | 'all'>('PENDING');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState('');
 
@@ -46,10 +48,11 @@ export default function EscortRequestsPage() {
   const loadBookings = async () => {
     setLoading(true);
     try {
-      const params: Record<string, any> = { role: 'escort' };
+      const params: Record<string, any> = {};
       if (filter !== 'all') params.status = filter;
       const res = await api.get('/bookings', { params });
-      setBookings(res.data?.data || res.data || []);
+      const payload = res.data?.data || res.data;
+      setBookings(Array.isArray(payload) ? payload : (payload?.data || []));
     } catch (err) {
       console.error('Failed to load bookings', err);
     } finally {
@@ -101,9 +104,13 @@ export default function EscortRequestsPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="mb-6 flex gap-2">
+      <div className="mb-6 flex flex-wrap gap-2">
         {[
           { value: 'PENDING' as const, label: 'Menunggu' },
+          { value: 'CONFIRMED' as const, label: 'Dikonfirmasi' },
+          { value: 'ONGOING' as const, label: 'Berlangsung' },
+          { value: 'COMPLETED' as const, label: 'Selesai' },
+          { value: 'CANCELLED' as const, label: 'Dibatalkan' },
           { value: 'all' as const, label: 'Semua' },
         ].map((tab) => (
           <button
@@ -128,7 +135,7 @@ export default function EscortRequestsPage() {
         <Card>
           <CardContent>
             <div className="py-16 text-center">
-              <div className="mb-4 text-4xl">📋</div>
+              <div className="mb-4"><ClipboardList className="h-10 w-10" /></div>
               <h3 className="text-lg font-light text-dark-200">
                 {filter === 'PENDING' ? 'Tidak Ada Permintaan Baru' : 'Belum Ada Booking'}
               </h3>
@@ -154,8 +161,11 @@ export default function EscortRequestsPage() {
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     {/* Client Info */}
                     <div className="flex items-start gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-400/10">
-                        {booking.client.profilePhoto ? (
+                      <Link
+                        href={`/escort/bookings/${booking.id}`}
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-400/10 transition-opacity hover:opacity-80"
+                      >
+                        {booking?.client?.profilePhoto ? (
                           <img
                             src={booking.client.profilePhoto}
                             alt=""
@@ -163,15 +173,18 @@ export default function EscortRequestsPage() {
                           />
                         ) : (
                           <span className="text-lg font-medium text-brand-400">
-                            {booking.client.firstName[0]}
+                            {booking?.client?.firstName?.[0] || '?'}
                           </span>
                         )}
-                      </div>
+                      </Link>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-medium text-dark-100">
-                            {booking.client.firstName} {booking.client.lastName}
-                          </h3>
+                          <Link
+                            href={`/escort/bookings/${booking.id}`}
+                            className="font-medium text-dark-100 transition-colors hover:text-brand-400"
+                          >
+                            {booking?.client?.firstName} {booking?.client?.lastName}
+                          </Link>
                           <Badge className={status.color}>{status.label}</Badge>
                         </div>
                         <div className="mt-1 space-y-0.5 text-sm text-dark-400">
@@ -194,6 +207,11 @@ export default function EscortRequestsPage() {
                       </p>
 
                       <div className="flex gap-2">
+                        <Link href={`/escort/bookings/${booking.id}`}>
+                          <Button size="sm" variant="outline">
+                            Lihat Detail
+                          </Button>
+                        </Link>
                         {booking.status === 'PENDING' && (
                           <>
                             <Button

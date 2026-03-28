@@ -1,6 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { ImageModule } from '@modules/image/image.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { join } from 'path';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './config/prisma.module';
@@ -16,6 +22,18 @@ import { ReviewModule } from './modules/review/review.module';
 import { SafetyModule } from './modules/safety/safety.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { MatchingModule } from './modules/matching/matching.module';
+import { CorporateModule } from './modules/corporate/corporate.module';
+import { TrainingModule } from './modules/training/training.module';
+import { PremiumModule } from './modules/premium/premium.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
+import { KycModule } from './modules/kyc/kyc.module';
+import { ReferralModule } from './modules/referral/referral.module';
+import { ArticleModule } from './modules/article/article.module';
+import { TestimonialModule } from './modules/testimonial/testimonial.module';
+import { GdprModule } from './modules/gdpr/gdpr.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { InvoiceModule } from './modules/invoice/invoice.module';
+import { HealthModule } from './modules/health/health.module';
 import appConfig from './config/app.config';
 import jwtConfig from './config/jwt.config';
 import databaseConfig from './config/database.config';
@@ -28,6 +46,27 @@ import redisConfig from './config/redis.config';
       isGlobal: true,
       load: [appConfig, jwtConfig, databaseConfig, redisConfig],
       envFilePath: ['.env', '../../.env'],
+      validationSchema: Joi.object({
+        NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
+        PORT: Joi.number().default(4000),
+        DATABASE_URL: Joi.string().required(),
+        ENCRYPTION_KEY: Joi.string().min(16).required(),
+        JWT_ACCESS_SECRET: Joi.string().when('NODE_ENV', { is: 'production', then: Joi.required() }),
+        JWT_REFRESH_SECRET: Joi.string().when('NODE_ENV', { is: 'production', then: Joi.required() }),
+        REDIS_HOST: Joi.string().default('localhost'),
+        REDIS_PORT: Joi.number().default(6379),
+      }),
+      validationOptions: {
+        allowUnknown: true,
+        abortEarly: false,
+      },
+    }),
+
+    // Static files (uploads)
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
+      serveStaticOptions: { index: false },
     }),
 
     // Rate Limiting
@@ -53,6 +92,7 @@ import redisConfig from './config/redis.config';
     PrismaModule,
     RedisModule,
     CommonModule,
+    ScheduleModule.forRoot(),
 
     // Feature Modules
     AuthModule,
@@ -65,8 +105,24 @@ import redisConfig from './config/redis.config';
     SafetyModule,
     AdminModule,
     MatchingModule,
+    CorporateModule,
+    TrainingModule,
+    PremiumModule,
+    MetricsModule,
+    KycModule,
+    ImageModule,
+    ReferralModule,
+    ArticleModule,
+    TestimonialModule,
+    GdprModule,
+    AnalyticsModule,
+    InvoiceModule,
+    HealthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

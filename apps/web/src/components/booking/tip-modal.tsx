@@ -51,7 +51,7 @@ export default function TipModal({ bookingId, escortName, isOpen, onClose, onSuc
       setSubmitting(true);
       setError('');
 
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings/${bookingId}/tip`, {
         method: 'POST',
         headers: {

@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import AdminLayout from '@/components/admin-layout';
+import api from '@/lib/api';
+import { AlertTriangle, Check, User, X } from 'lucide-react';
 
 interface EscortDetail {
   id: string;
@@ -90,38 +93,27 @@ export default function AdminEscortDetailPage() {
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'bookings' | 'reviews'>('profile');
 
-  useEffect(() => {
-    fetchEscortDetail();
-  }, [escortId]);
-
-  const fetchEscortDetail = async () => {
+  const fetchEscortDetail = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/escorts/${escortId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setEscort(data);
-      }
+      const res = await api.get(`/escorts/${escortId}`);
+      const payload = res.data?.data || res.data;
+      setEscort(payload);
     } catch (err) {
       console.error('Failed to fetch escort detail:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [escortId]);
+
+  useEffect(() => {
+    fetchEscortDetail();
+  }, [fetchEscortDetail]);
 
   const handleApprove = async () => {
     try {
       setActionLoading(true);
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/escorts/${escortId}/verify`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-        },
-        body: JSON.stringify({ status: 'APPROVED' }),
-      });
+      await api.patch(`/admin/escorts/${escortId}/verify`, { approved: true });
       fetchEscortDetail();
     } catch (err) {
       console.error('Approve failed:', err);
@@ -134,14 +126,7 @@ export default function AdminEscortDetailPage() {
     if (!rejectReason.trim()) return;
     try {
       setActionLoading(true);
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/escorts/${escortId}/verify`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-        },
-        body: JSON.stringify({ status: 'REJECTED', reason: rejectReason }),
-      });
+      await api.patch(`/admin/escorts/${escortId}/verify`, { approved: false, reason: rejectReason });
       setShowRejectModal(false);
       setRejectReason('');
       fetchEscortDetail();
@@ -156,14 +141,11 @@ export default function AdminEscortDetailPage() {
     if (!suspendReason.trim()) return;
     try {
       setActionLoading(true);
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/escorts/${escortId}/suspend`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-        },
-        body: JSON.stringify({ reason: suspendReason }),
-      });
+      // Use user status endpoint to deactivate (suspend)
+      const userId = escort?.id;
+      if (userId) {
+        await api.patch(`/admin/users/${userId}/status`, { isActive: false, reason: suspendReason });
+      }
       setShowSuspendModal(false);
       setSuspendReason('');
       fetchEscortDetail();
@@ -178,10 +160,7 @@ export default function AdminEscortDetailPage() {
     if (!escort) return;
     try {
       setActionLoading(true);
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/escorts/${escortId}/toggle-active`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` },
-      });
+      await api.patch(`/admin/users/${escort.id}/status`, { isActive: !escort.isActive });
       fetchEscortDetail();
     } catch (err) {
       console.error('Toggle active failed:', err);
@@ -192,20 +171,24 @@ export default function AdminEscortDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-400 border-t-transparent" />
-      </div>
+      <AdminLayout>
+        <div className="flex h-96 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-400 border-t-transparent" />
+        </div>
+      </AdminLayout>
     );
   }
 
   if (!escort) {
     return (
-      <div className="rounded-xl border border-dark-700/30 bg-dark-800/20 p-12 text-center">
-        <p className="text-dark-400">Escort tidak ditemukan</p>
-        <Link href="/escorts/pending" className="mt-4 inline-block text-sm text-brand-400 hover:underline">
-          ← Kembali ke daftar
-        </Link>
-      </div>
+      <AdminLayout>
+        <div className="rounded-xl border border-dark-700/30 bg-dark-800/20 p-12 text-center">
+          <p className="text-dark-400">Escort tidak ditemukan</p>
+          <Link href="/users?tab=escort-pending" className="mt-4 inline-block text-sm text-brand-400 hover:underline">
+            ← Kembali ke daftar
+          </Link>
+        </div>
+      </AdminLayout>
     );
   }
 
@@ -214,6 +197,7 @@ export default function AdminEscortDetailPage() {
   const tier = tierConfig[profile?.tier || 'SILVER'] || tierConfig.SILVER;
 
   return (
+    <AdminLayout>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -245,14 +229,14 @@ export default function AdminEscortDetailPage() {
               disabled={actionLoading}
               className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
             >
-              ✓ Approve
+              <Check className="h-4 w-4 inline-block" /> Approve
             </button>
             <button
               onClick={() => setShowRejectModal(true)}
               disabled={actionLoading}
               className="rounded-lg bg-red-600/20 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-600/30 disabled:opacity-50"
             >
-              ✗ Reject
+              <X className="h-4 w-4 inline-block" /> Reject
             </button>
           </>
         )}
@@ -262,7 +246,7 @@ export default function AdminEscortDetailPage() {
             disabled={actionLoading}
             className="rounded-lg bg-orange-600/20 px-4 py-2 text-sm font-medium text-orange-400 transition-colors hover:bg-orange-600/30 disabled:opacity-50"
           >
-            ⚠ Suspend
+            <AlertTriangle className="h-4 w-4 inline-block" /> Suspend
           </button>
         )}
         <button
@@ -306,7 +290,7 @@ export default function AdminEscortDetailPage() {
                   <img src={escort.profilePhoto} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full items-center justify-center">
-                    <span className="text-4xl text-dark-500">👤</span>
+                    <User className="h-10 w-10 text-dark-500" />
                   </div>
                 )}
               </div>
@@ -323,7 +307,7 @@ export default function AdminEscortDetailPage() {
           <div className="space-y-4 lg:col-span-2">
             {/* Stats Cards */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <StatCard label="Rating" value={profile?.ratingAvg.toFixed(1) || '-'} sub={`${profile?.totalReviews || 0} review`} />
+              <StatCard label="Rating" value={profile?.ratingAvg?.toFixed(1) || '-'} sub={`${profile?.totalReviews || 0} review`} />
               <StatCard label="Total Booking" value={String(profile?.totalBookings || 0)} />
               <StatCard label="Pendapatan" value={`Rp ${(profile?.totalEarnings || 0).toLocaleString('id-ID')}`} />
               <StatCard label="Tarif/Jam" value={`Rp ${(profile?.hourlyRate || 0).toLocaleString('id-ID')}`} />
@@ -524,6 +508,7 @@ export default function AdminEscortDetailPage() {
         </div>
       )}
     </div>
+    </AdminLayout>
   );
 }
 

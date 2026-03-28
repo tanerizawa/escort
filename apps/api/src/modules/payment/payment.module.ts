@@ -1,6 +1,15 @@
 import { Module } from '@nestjs/common';
+import { PaymentController } from './payment.controller';
+import { PaymentService } from './payment.service';
+import { XenditService } from './xendit.service';
+import { CryptoPaymentService } from './crypto-payment.service';
+import { DokuService } from './doku.service';
+import { NotificationModule } from '@modules/notification/notification.module';
 
 @Module({
-  // TODO: Phase 3 — Payment & Escrow
+  imports: [NotificationModule],
+  controllers: [PaymentController],
+  providers: [PaymentService, XenditService, CryptoPaymentService, DokuService],
+  exports: [PaymentService, XenditService, CryptoPaymentService, DokuService],
 })
 export class PaymentModule {}

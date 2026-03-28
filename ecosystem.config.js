@@ -1,22 +1,25 @@
 module.exports = {
   apps: [
-    // NestJS API Server
+    // NestJS API Server — cluster mode for better throughput
     {
       name: 'areton-api',
       cwd: './apps/api',
       script: 'dist/main.js',
-      instances: 1,
-      exec_mode: 'fork',
+      instances: 2,
+      exec_mode: 'cluster',
       env: {
         NODE_ENV: 'production',
         PORT: 4000,
       },
-      max_memory_restart: '512M',
+      max_memory_restart: '400M',
+      merge_logs: true,
       error_file: './logs/api-error.log',
       out_file: './logs/api-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss',
       restart_delay: 3000,
       max_restarts: 10,
+      listen_timeout: 10000,
+      kill_timeout: 5000,
     },
 
     // Next.js Web App (Client)

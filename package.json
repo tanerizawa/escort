@@ -21,10 +21,10 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
-    "prettier": "^3.2.0",
     "husky": "^9.0.0",
-    "lint-staged": "^15.2.0"
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.2.0",
+    "turbo": "^2.0.0"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
@@ -38,5 +38,13 @@
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
+  },
+  "dependencies": {
+    "@nestjs/schedule": "^6.1.1",
+    "expo": "~53.0.27",
+    "react": "19.0.0",
+    "react-dom": "^19.0.0",
+    "react-native": "0.79.6",
+    "scheduler": "^0.25.0"
   }
 }

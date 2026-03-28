@@ -5,11 +5,15 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '@/config/prisma.service';
+import { EmailService } from '@modules/notification/email.service';
 import { CreateReviewDto, ReplyReviewDto } from './dto/review.dto';
 
 @Injectable()
 export class ReviewService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
 
   async create(reviewerId: string, dto: CreateReviewDto) {
     // Verify booking is completed
@@ -27,9 +31,15 @@ export class ReviewService {
       throw new ForbiddenException('Anda tidak terlibat dalam booking ini');
     }
 
-    // Ensure reviewee is the other party
+    // Ensure reviewee is the other party (not just "not self")
     if (dto.revieweeId === reviewerId) {
       throw new BadRequestException('Tidak dapat mereview diri sendiri');
+    }
+
+    // Validate revieweeId is actually the other booking participant
+    const otherParty = booking.clientId === reviewerId ? booking.escortId : booking.clientId;
+    if (dto.revieweeId !== otherParty) {
+      throw new BadRequestException('revieweeId harus merupakan pihak lain dalam booking ini');
     }
 
     // Check if already reviewed
@@ -62,17 +72,33 @@ export class ReviewService {
     // Update escort's average rating
     await this.updateEscortRating(dto.revieweeId);
 
+    // Send email notification to reviewee
+    const [reviewer, reviewee] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: reviewerId }, select: { firstName: true, lastName: true } }),
+      this.prisma.user.findUnique({ where: { id: dto.revieweeId }, select: { email: true, firstName: true } }),
+    ]);
+    if (reviewee) {
+      this.emailService.sendNewReview(reviewee.email, {
+        name: reviewee.firstName,
+        reviewerName: `${reviewer?.firstName || ''} ${reviewer?.lastName || ''}`.trim(),
+        rating: dto.rating,
+        comment: dto.comment || '',
+      }).catch(() => {});
+    }
+
     return review;
   }
 
   async findByEscort(escortId: string, page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
+    const safePage = Math.max(1, Number(page) || 1);
+    const safeLimit = Math.max(1, Math.min(100, Number(limit) || 10));
+    const skip = (safePage - 1) * safeLimit;
 
-    const [reviews, total] = await Promise.all([
+    const [reviews, total, aggregate] = await Promise.all([
       this.prisma.review.findMany({
         where: { revieweeId: escortId, isFlagged: false },
         skip,
-        take: limit,
+        take: safeLimit,
         orderBy: { createdAt: 'desc' },
         include: {
           reviewer: { select: { firstName: true, lastName: true, profilePhoto: true } },
@@ -80,11 +106,41 @@ export class ReviewService {
         },
       }),
       this.prisma.review.count({ where: { revieweeId: escortId, isFlagged: false } }),
+      this.prisma.review.aggregate({
+        where: { revieweeId: escortId, isFlagged: false },
+        _avg: { rating: true },
+      }),
     ]);
 
     return {
       data: reviews,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      averageRating: aggregate._avg.rating || 0,
+      pagination: { page: safePage, limit: safeLimit, total, totalPages: Math.ceil(total / safeLimit) },
+    };
+  }
+
+  async findByReviewer(reviewerId: string, page = 1, limit = 10) {
+    const safePage = Math.max(1, Number(page) || 1);
+    const safeLimit = Math.max(1, Math.min(100, Number(limit) || 10));
+    const skip = (safePage - 1) * safeLimit;
+
+    const [reviews, total] = await Promise.all([
+      this.prisma.review.findMany({
+        where: { reviewerId, isFlagged: false },
+        skip,
+        take: safeLimit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          reviewee: { select: { firstName: true, lastName: true, profilePhoto: true } },
+          booking: { select: { serviceType: true, startTime: true } },
+        },
+      }),
+      this.prisma.review.count({ where: { reviewerId, isFlagged: false } }),
+    ]);
+
+    return {
+      data: reviews,
+      pagination: { page: safePage, limit: safeLimit, total, totalPages: Math.ceil(total / safeLimit) },
     };
   }
 
@@ -125,6 +181,14 @@ export class ReviewService {
   async flag(userId: string, reviewId: string) {
     const review = await this.prisma.review.findUnique({ where: { id: reviewId } });
     if (!review) throw new NotFoundException('Review tidak ditemukan');
+
+    // Only the reviewee (person being reviewed) or admin can flag a review
+    // Check if user is the reviewee or admin
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+    if (review.revieweeId !== userId && !isAdmin) {
+      throw new ForbiddenException('Hanya penerima review atau admin yang dapat melaporkan review');
+    }
 
     return this.prisma.review.update({
       where: { id: reviewId },

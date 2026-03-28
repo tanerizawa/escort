@@ -1,4 +1,6 @@
 'use client';
+import { Check, Hourglass, MapPin, Star } from 'lucide-react';
+import { Icon } from '@/components/ui/icon';
 
 interface BookingStatusTrackerProps {
   currentStatus: string;
@@ -30,10 +32,10 @@ export default function BookingStatusTracker({
   const isDisputed = currentStatus === 'DISPUTED';
 
   const steps: Step[] = [
-    { key: 'PENDING', label: 'Menunggu', icon: '⏳', timestamp: createdAt },
-    { key: 'CONFIRMED', label: 'Dikonfirmasi', icon: '✓', timestamp: undefined },
-    { key: 'ONGOING', label: 'Berlangsung', icon: '📍', timestamp: checkinAt },
-    { key: 'COMPLETED', label: 'Selesai', icon: '★', timestamp: checkoutAt },
+    { key: 'PENDING', label: 'Menunggu', icon: 'Hourglass', timestamp: createdAt },
+    { key: 'CONFIRMED', label: 'Dikonfirmasi', icon: 'Check', timestamp: undefined },
+    { key: 'ONGOING', label: 'Berlangsung', icon: 'MapPin', timestamp: checkinAt },
+    { key: 'COMPLETED', label: 'Selesai', icon: 'Star', timestamp: checkoutAt },
   ];
 
   const currentIdx = statusOrder.indexOf(currentStatus);
@@ -105,7 +107,7 @@ export default function BookingStatusTracker({
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   ) : (
-                    <span className="text-xs">{step.icon}</span>
+                    <span className="text-xs"><Icon name={step.icon} className="h-4 w-4" /></span>
                   )}
                 </div>
 
@@ -150,7 +152,7 @@ export default function BookingStatusTracker({
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     ) : (
-                      <span className="text-2xs">{step.icon}</span>
+                      <span className="text-2xs"><Icon name={step.icon} className="h-3 w-3" /></span>
                     )}
                   </div>
                   {!isLast && (

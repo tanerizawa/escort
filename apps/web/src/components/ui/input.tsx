@@ -39,8 +39,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             type={isPassword && showPassword ? 'text' : type}
             className={cn(
               'w-full rounded-lg border bg-dark-800/60 px-4 py-2.5 text-sm text-dark-100',
-              'placeholder:text-dark-600 transition-all duration-200',
-              'focus:border-brand-400/50 focus:outline-none focus:ring-1 focus:ring-brand-400/20',
+              'placeholder:text-dark-600 transition-all duration-300',
+              'focus:border-brand-400/50 focus:outline-none focus:ring-2 focus:ring-brand-400/15 focus:bg-dark-800/80',
+              'focus:shadow-md focus:shadow-brand-400/5',
               error
                 ? 'border-red-500/40 focus:border-red-500/60 focus:ring-red-500/20'
                 : 'border-dark-600/30 hover:border-dark-500/50',

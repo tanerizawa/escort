@@ -6,11 +6,15 @@ import {
   Body,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { SafetyService } from './safety.service';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { TriggerSOSDto, ReportIncidentDto, PingLocationDto, UpdateLocationDto } from '@modules/common-dto';
 
 @Controller('safety')
 @ApiTags('safety')
@@ -23,23 +27,20 @@ export class SafetyController {
   @ApiOperation({ summary: 'Trigger SOS emergency alert' })
   async triggerSOS(
     @CurrentUser('id') userId: string,
-    @Body() body: { bookingId: string; description?: string },
+    @Body() dto: TriggerSOSDto,
   ) {
-    return this.safetyService.triggerSOS(userId, body.bookingId, body.description);
+    return this.safetyService.triggerSOS(userId, dto.bookingId, dto.description);
   }
 
   @Post('incident')
+  @UseInterceptors(FilesInterceptor('evidence', 5, { limits: { fileSize: 10 * 1024 * 1024 } }))
   @ApiOperation({ summary: 'Report an incident' })
   async reportIncident(
     @CurrentUser('id') userId: string,
-    @Body() body: {
-      bookingId: string;
-      type: string;
-      description: string;
-      severity: number;
-    },
+    @Body() dto: ReportIncidentDto,
+    @UploadedFiles() files?: Express.Multer.File[],
   ) {
-    return this.safetyService.reportIncident(userId, body);
+    return this.safetyService.reportIncident(userId, dto, files);
   }
 
   @Get('incidents')
@@ -62,21 +63,29 @@ export class SafetyController {
 
   // ── Location Tracking ──────────────────────────────
 
+  @Post('location/ping')
+  @ApiOperation({ summary: 'Update general GPS location (no booking required)' })
+  async pingLocation(
+    @CurrentUser('id') userId: string,
+    @Body() dto: PingLocationDto,
+  ) {
+    return this.safetyService.pingUserLocation(userId, {
+      lat: dto.lat,
+      lng: dto.lng,
+      accuracy: dto.accuracy,
+    });
+  }
+
   @Post('location')
   @ApiOperation({ summary: 'Update live GPS location during booking' })
   async updateLocation(
     @CurrentUser('id') userId: string,
-    @Body() body: {
-      bookingId: string;
-      lat: number;
-      lng: number;
-      accuracy?: number;
-    },
+    @Body() dto: UpdateLocationDto,
   ) {
-    return this.safetyService.updateLocation(userId, body.bookingId, {
-      lat: body.lat,
-      lng: body.lng,
-      accuracy: body.accuracy,
+    return this.safetyService.updateLocation(userId, dto.bookingId, {
+      lat: dto.lat,
+      lng: dto.lng,
+      accuracy: dto.accuracy,
     });
   }
 
@@ -102,8 +111,9 @@ export class SafetyController {
   @Get('late-check/:bookingId')
   @ApiOperation({ summary: 'Check late alert status for a booking' })
   async checkLateAlert(
+    @CurrentUser('id') userId: string,
     @Param('bookingId') bookingId: string,
   ) {
-    return this.safetyService.checkLateAlert(bookingId);
+    return this.safetyService.checkLateAlert(bookingId, userId);
   }
 }

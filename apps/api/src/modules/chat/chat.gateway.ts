@@ -10,7 +10,9 @@ import {
 import { Logger, UseGuards, Injectable } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { RedisService } from '@/config/redis.service';
+import { PrismaService } from '@/config/prisma.service';
 import { ChatService } from './chat.service';
 
 interface AuthenticatedSocket extends Socket {
@@ -38,7 +40,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
     private readonly redis: RedisService,
+    private readonly prisma: PrismaService,
     private readonly chatService: ChatService,
   ) {}
 
@@ -54,7 +58,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return;
       }
 
-      const payload = this.jwtService.verify(token);
+      const payload = this.jwtService.verify(token, {
+        secret: this.configService.get<string>('jwt.accessSecret'),
+      });
       client.userId = payload.sub as string;
       client.userName = (payload.firstName as string) || 'User';
 
@@ -90,6 +96,30 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { bookingId: string },
   ) {
     if (!client.userId) return;
+
+    // Verify user is a participant in this booking
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: data.bookingId },
+      select: { clientId: true, escortId: true, status: true },
+    });
+
+    if (!booking || (booking.clientId !== client.userId && booking.escortId !== client.userId)) {
+      this.logger.warn(`User ${client.userId} denied access to room booking:${data.bookingId}`);
+      client.emit('error', {
+        event: 'join:room',
+        message: 'Anda tidak memiliki akses ke ruang chat ini',
+      });
+      return;
+    }
+
+    // Only allow chat for active bookings
+    if (!['PENDING', 'CONFIRMED', 'ONGOING'].includes(booking.status)) {
+      client.emit('error', {
+        event: 'join:room',
+        message: 'Chat tidak tersedia untuk booking yang sudah selesai atau dibatalkan',
+      });
+      return;
+    }
 
     const roomId = `booking:${data.bookingId}`;
     await client.join(roomId);

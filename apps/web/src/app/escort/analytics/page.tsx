@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import api from '@/lib/api';
+import { BarChart3, Star } from 'lucide-react';
 
 interface AnalyticsData {
   totalBookings: number;
@@ -25,6 +26,7 @@ interface AnalyticsData {
 export default function EscortAnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState('month');
 
   useEffect(() => {
@@ -33,34 +35,15 @@ export default function EscortAnalyticsPage() {
 
   const loadAnalytics = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await api.get(`/users/escorts/me/analytics?period=${period}`);
-      setData(res.data);
-    } catch {
-      // Fallback demo data
-      setData({
-        totalBookings: 48,
-        completedBookings: 42,
-        cancelledBookings: 3,
-        totalEarnings: 25600000,
-        avgRating: 4.8,
-        totalReviews: 38,
-        monthlyEarnings: [
-          { month: 'Jan', amount: 3200000 },
-          { month: 'Feb', amount: 4100000 },
-          { month: 'Mar', amount: 3800000 },
-          { month: 'Apr', amount: 5200000 },
-          { month: 'Mei', amount: 4800000 },
-          { month: 'Jun', amount: 4500000 },
-        ],
-        bookingsByStatus: [
-          { status: 'COMPLETED', count: 42 },
-          { status: 'CANCELLED', count: 3 },
-          { status: 'ONGOING', count: 1 },
-          { status: 'PENDING', count: 2 },
-        ],
-        recentReviews: [],
-      });
+      const res = await api.get(`/escorts/me/analytics?period=${period}`);
+      const payload = res.data?.data || res.data;
+      setData(payload);
+    } catch (err: any) {
+      console.error('Failed to load analytics:', err);
+      setError('Gagal memuat data analytics. Pastikan Anda sudah memiliki booking yang selesai.');
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -77,7 +60,25 @@ export default function EscortAnalyticsPage() {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-white">Performance Analytics</h1>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="mb-4"><BarChart3 className="h-10 w-10" /></div>
+          <p className="text-lg font-light text-dark-200">
+            {error || 'Data analytics tidak tersedia'}
+          </p>
+          <button
+            onClick={loadAnalytics}
+            className="mt-4 rounded-lg bg-brand-400 px-4 py-2 text-sm font-medium text-dark-900 transition-colors hover:bg-brand-300"
+          >
+            Coba Lagi
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const completionRate = data.totalBookings > 0
     ? Math.round((data.completedBookings / data.totalBookings) * 100)
@@ -112,7 +113,7 @@ export default function EscortAnalyticsPage() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-xs text-gray-400 uppercase tracking-wider">Total Booking</p>
-              <p className="mt-2 text-3xl font-bold text-white">{data.totalBookings}</p>
+              <p className="mt-2 text-3xl font-bold text-white">{data.totalBookings.toLocaleString('id-ID')}</p>
               <p className="mt-1 text-xs text-green-400">{completionRate}% selesai</p>
             </div>
           </CardContent>
@@ -130,9 +131,9 @@ export default function EscortAnalyticsPage() {
             <div className="text-center">
               <p className="text-xs text-gray-400 uppercase tracking-wider">Rating Rata-rata</p>
               <p className="mt-2 text-3xl font-bold text-yellow-400">
-                ★ {data.avgRating.toFixed(1)}
+                <Star className="h-4 w-4 inline-block" /> {data.avgRating.toFixed(1)}
               </p>
-              <p className="mt-1 text-xs text-gray-400">{data.totalReviews} ulasan</p>
+              <p className="mt-1 text-xs text-gray-400">{data.totalReviews.toLocaleString('id-ID')} ulasan</p>
             </div>
           </CardContent>
         </Card>
@@ -145,7 +146,7 @@ export default function EscortAnalyticsPage() {
                   ? Math.round((data.cancelledBookings / data.totalBookings) * 100)
                   : 0}%
               </p>
-              <p className="mt-1 text-xs text-gray-400">{data.cancelledBookings} dibatalkan</p>
+              <p className="mt-1 text-xs text-gray-400">{data.cancelledBookings.toLocaleString('id-ID')} dibatalkan</p>
             </div>
           </CardContent>
         </Card>

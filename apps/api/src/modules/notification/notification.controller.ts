@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Put,
   Patch,
   Delete,
@@ -11,15 +12,20 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { NotificationService } from './notification.service';
+import { PushService } from './push.service';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { UpdateNotificationPreferencesDto, RegisterPushTokenDto } from '@modules/common-dto';
 
 @Controller('notifications')
 @ApiTags('notifications')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 export class NotificationController {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly pushService: PushService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List my notifications' })
@@ -48,9 +54,9 @@ export class NotificationController {
   @ApiOperation({ summary: 'Update notification preferences' })
   async updatePreferences(
     @CurrentUser('id') userId: string,
-    @Body() body: Record<string, boolean>,
+    @Body() dto: UpdateNotificationPreferencesDto,
   ) {
-    return this.notificationService.updatePreferences(userId, body);
+    return this.notificationService.updatePreferences(userId, { ...dto });
   }
 
   @Patch(':id/read')
@@ -75,5 +81,27 @@ export class NotificationController {
     @Param('id') notificationId: string,
   ) {
     return this.notificationService.deleteNotification(userId, notificationId);
+  }
+
+  // ── Push Token Management ──
+
+  @Post('push/register')
+  @ApiOperation({ summary: 'Register FCM device token for push notifications' })
+  async registerPushToken(
+    @CurrentUser('id') userId: string,
+    @Body() dto: RegisterPushTokenDto,
+  ) {
+    await this.pushService.registerToken(userId, dto.token, dto.platform || 'web');
+    return { registered: true };
+  }
+
+  @Delete('push/unregister')
+  @ApiOperation({ summary: 'Remove FCM device token' })
+  async unregisterPushToken(
+    @CurrentUser('id') userId: string,
+    @Body() body: { token: string },
+  ) {
+    await this.pushService.removeToken(userId, body.token);
+    return { unregistered: true };
   }
 }

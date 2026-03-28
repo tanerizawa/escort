@@ -6,7 +6,7 @@
 
 | Layer | Technology |
 |-------|-----------|
-| **Backend** | NestJS 10, TypeScript, Prisma 5, PostgreSQL 16, Redis 7 |
+| **Backend** | NestJS 10, TypeScript, Prisma 5, PostgreSQL 17, Redis 8 |
 | **Frontend Web** | Next.js 14 (App Router), Tailwind CSS, Zustand |
 | **Frontend Admin** | Next.js 14, Tailwind CSS, Recharts |
 | **Real-time** | Socket.io 4.7 (chat, presence, typing) |
@@ -25,13 +25,13 @@ prestige-id/
 │   │       ├── common/  # Guards, decorators, pipes, audit, encryption
 │   │       ├── config/  # App, DB, JWT, Redis configuration
 │   │       └── modules/ # Feature modules
-│   ├── web/             # Next.js frontend (port 3000)
+│   ├── web/             # Next.js frontend (port 3003)
 │   │   └── src/
 │   │       ├── app/     # App Router pages
 │   │       ├── components/ # UI components
 │   │       ├── lib/     # API client, utilities
 │   │       └── stores/  # Zustand state management
-│   └── admin/           # Next.js admin panel (port 3001)
+│   └── admin/           # Next.js admin panel (port 3005)
 ├── packages/
 │   └── shared-types/    # Shared TypeScript interfaces
 ├── docs/                # Documentation
@@ -49,12 +49,12 @@ prestige-id/
 - **Chat** — Real-time messaging via Socket.io, typing indicators, read receipts, online presence
 - **Review** — Ratings (1-5), sub-scores (attitude, punctuality, professionalism), replies, flagging
 - **Notification** — In-app notifications, preferences, unread counts
-- **Safety** — SOS alerts, incident reports, live GPS tracking, geofencing, late alerts
-- **Admin** — Dashboard stats, user management, escort verification, incidents, finance, promo codes, audit logs
+- **Safety** — SOS alerts, incident reports (with evidence upload), live GPS tracking, geofencing, late alerts
+- **Admin** — Dashboard stats, user management, escort verification, incidents, finance, promo codes, audit logs, live booking monitoring
 - **Matching** — AI-powered escort recommendations
 
 ### Database Models (Prisma)
-`User`, `EscortProfile`, `Certification`, `Booking`, `Payment`, `Review`, `ChatMessage`, `IncidentReport`, `Notification`, `Favorite`, `AuditLog`, `PromoCode`
+`User`, `EscortProfile`, `Certification`, `Booking`, `Payment`, `Review`, `ChatMessage`, `IncidentReport`, `Notification`, `Favorite`, `AuditLog`, `PromoCode`, `KycVerification`
 
 ## Getting Started
 
@@ -124,7 +124,7 @@ Swagger UI available at `http://localhost:4000/api/docs` when running in develop
 
 ## Key Pages
 
-### Client Web (`localhost:3000`)
+### Client Web (`localhost:3003`)
 | Path | Description |
 |------|-------------|
 | `/login`, `/register` | Authentication |
@@ -140,7 +140,7 @@ Swagger UI available at `http://localhost:4000/api/docs` when running in develop
 | `/notifications` | Notifications & preferences |
 | `/safety` | Safety guidelines |
 
-### Escort Web (`localhost:3000`)
+### Escort Web (`localhost:3003`)
 | Path | Description |
 |------|-------------|
 | `/register/escort` | Multi-step registration |
@@ -149,7 +149,7 @@ Swagger UI available at `http://localhost:4000/api/docs` when running in develop
 | `/escort/earnings` | Earnings dashboard |
 | `/escort/analytics` | Performance analytics |
 
-### Admin (`localhost:3001`)
+### Admin (`localhost:3005`)
 | Path | Description |
 |------|-------------|
 | `/dashboard` | Platform statistics |
@@ -159,6 +159,8 @@ Swagger UI available at `http://localhost:4000/api/docs` when running in develop
 | `/disputes` | Dispute resolution |
 | `/incidents` | Incident management |
 | `/finance` | Financial summary |
+| `/monitoring` | Live booking monitoring |
+| `/monitoring/[id]` | Detailed booking monitor |
 | `/promo-codes` | Promo code management |
 | `/audit-logs` | Security audit trail |
 | `/settings` | Platform configuration |

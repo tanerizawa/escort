@@ -61,6 +61,31 @@ export class UpdateEscortProfileDto {
   @ApiPropertyOptional({ description: 'Availability schedule as JSON' })
   @IsOptional()
   availabilitySchedule?: Record<string, any>;
+
+  // Physical appearance
+  @ApiPropertyOptional() @IsOptional() @IsString() age?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() height?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() weight?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() bodyType?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() hairStyle?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() eyeColor?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() complexion?: string;
+
+  // Personal background
+  @ApiPropertyOptional() @IsOptional() @IsString() nationality?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() occupation?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() fieldOfWork?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() basedIn?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() travelScope?: string;
+
+  // Lifestyle
+  @ApiPropertyOptional() @IsOptional() @IsString() smoking?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() tattooPiercing?: string;
+
+  // Favourites
+  @ApiPropertyOptional({ description: 'Favourites as JSON object' })
+  @IsOptional()
+  favourites?: Record<string, any>;
 }
 
 export class EscortQueryDto {
@@ -94,7 +119,7 @@ export class EscortQueryDto {
   @ApiPropertyOptional({ enum: ['rating', 'price_asc', 'price_desc', 'newest'] })
   @IsOptional()
   @IsString()
-  sort?: string;
+  sortBy?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/config/prisma.service';
 import { RedisService } from '@/config/redis.service';
+import { EncryptionService } from '@/common/services/encryption.service';
+import { AuditService } from '@/common/services/audit.service';
+import { NotificationService } from '@modules/notification/notification.service';
+import { EmailService } from '@modules/notification/email.service';
 import { Prisma } from '@prisma/client';
 
 const CONFIG_KEYS = {
@@ -32,7 +36,19 @@ export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly encryption: EncryptionService,
+    private readonly audit: AuditService,
+    private readonly notificationService: NotificationService,
+    private readonly emailService: EmailService,
   ) {}
+
+  private decryptSafe(content: string): string {
+    try {
+      return this.encryption.decrypt(content);
+    } catch {
+      return content;
+    }
+  }
 
   async getPlatformStats() {
     const [
@@ -43,6 +59,11 @@ export class AdminService {
       pendingVerifications,
       openIncidents,
       revenueResult,
+      pendingKyc,
+      pendingCertifications,
+      pendingRefundClaims,
+      pendingWithdrawals,
+      disputedBookings,
     ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.user.count({ where: { role: 'ESCORT' } }),
@@ -54,6 +75,11 @@ export class AdminService {
         where: { status: { in: ['ESCROW', 'RELEASED'] } },
         _sum: { amount: true, platformFee: true },
       }),
+      this.prisma.kycVerification.count({ where: { status: 'PENDING' } }),
+      this.prisma.certification.count({ where: { isVerified: false } }),
+      this.prisma.refundClaim.count({ where: { status: 'PENDING' } }),
+      this.prisma.withdrawal.count({ where: { status: 'PENDING' } }),
+      this.prisma.booking.count({ where: { status: 'DISPUTED' } }),
     ]);
 
     return {
@@ -65,10 +91,489 @@ export class AdminService {
       openIncidents,
       totalRevenue: revenueResult._sum.amount?.toNumber() || 0,
       totalPlatformFee: revenueResult._sum.platformFee?.toNumber() || 0,
+      pendingKyc,
+      pendingCertifications,
+      pendingRefundClaims,
+      pendingWithdrawals,
+      disputedBookings,
     };
   }
 
-  async listUsers(page = 1, limit = 20, role?: string, search?: string) {
+  // ── User Detail (admin) ──────────────────────────────
+
+  async getUserDetail(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isVerified: true,
+        isActive: true,
+        profilePhoto: true,
+        twoFactorEnabled: true,
+        lastLoginAt: true,
+        createdAt: true,
+        updatedAt: true,
+        escortProfile: {
+          include: {
+            certifications: true,
+          },
+        },
+        clientBookings: {
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            serviceType: true,
+            status: true,
+            startTime: true,
+            endTime: true,
+            totalAmount: true,
+            location: true,
+            escort: { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
+        escortBookings: {
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            serviceType: true,
+            status: true,
+            startTime: true,
+            endTime: true,
+            totalAmount: true,
+            location: true,
+            client: { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
+        givenReviews: {
+          take: 5,
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, rating: true, comment: true, createdAt: true },
+        },
+        receivedReviews: {
+          take: 5,
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, rating: true, comment: true, createdAt: true },
+        },
+        incidentReports: {
+          take: 5,
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, type: true, severity: true, resolutionStatus: true, createdAt: true },
+        },
+      },
+    });
+
+    if (!user) throw new NotFoundException('User tidak ditemukan');
+
+    // Get booking stats
+    const [totalBookings, completedBookings, totalSpent, totalEarned] = await Promise.all([
+      this.prisma.booking.count({
+        where: user.role === 'ESCORT'
+          ? { escortId: userId }
+          : { clientId: userId },
+      }),
+      this.prisma.booking.count({
+        where: {
+          ...(user.role === 'ESCORT' ? { escortId: userId } : { clientId: userId }),
+          status: 'COMPLETED',
+        },
+      }),
+      user.role === 'CLIENT'
+        ? this.prisma.payment.aggregate({
+            where: { booking: { clientId: userId }, status: { in: ['ESCROW', 'RELEASED'] } },
+            _sum: { amount: true },
+          })
+        : null,
+      user.role === 'ESCORT'
+        ? this.prisma.payment.aggregate({
+            where: { booking: { escortId: userId }, status: 'RELEASED' },
+            _sum: { escortPayout: true },
+          })
+        : null,
+    ]);
+
+    return {
+      ...user,
+      stats: {
+        totalBookings,
+        completedBookings,
+        totalSpent: totalSpent?._sum?.amount?.toNumber() || 0,
+        totalEarned: totalEarned?._sum?.escortPayout?.toNumber() || 0,
+      },
+    };
+  }
+
+  // ── Booking Monitoring ────────────────────────────────
+
+  async getActiveBookingsMonitor() {
+    const bookings = await this.prisma.booking.findMany({
+      where: { status: { in: ['CONFIRMED', 'ONGOING'] } },
+      orderBy: { startTime: 'asc' },
+      include: {
+        client: { select: { id: true, firstName: true, lastName: true, profilePhoto: true, phone: true } },
+        escort: { select: { id: true, firstName: true, lastName: true, profilePhoto: true, phone: true } },
+        payment: { select: { status: true, amount: true, platformFee: true, escortPayout: true } },
+        incidents: { where: { resolutionStatus: 'OPEN' }, select: { id: true, type: true, severity: true, createdAt: true } },
+      },
+    });
+
+    // Enrich with live GPS data from Redis
+    const enriched = await Promise.all(
+      bookings.map(async (booking) => {
+        const [clientLoc, escortLoc, lateCheck] = await Promise.all([
+          this.redis.getJSON<{ lat: number; lng: number; accuracy?: number; timestamp: number }>(`location:${booking.id}:${booking.clientId}`),
+          this.redis.getJSON<{ lat: number; lng: number; accuracy?: number; timestamp: number }>(`location:${booking.id}:${booking.escortId}`),
+          this.getLateStatus(booking),
+        ]);
+
+        // Also fetch general ping location as fallback
+        const [clientPing, escortPing] = await Promise.all([
+          !clientLoc ? this.redis.getJSON<{ lat: number; lng: number; accuracy?: number; timestamp: number }>(`user_location:${booking.clientId}`) : null,
+          !escortLoc ? this.redis.getJSON<{ lat: number; lng: number; accuracy?: number; timestamp: number }>(`user_location:${booking.escortId}`) : null,
+        ]);
+
+        const clientLocation = clientLoc || clientPing || null;
+        const escortLocation = escortLoc || escortPing || null;
+
+        // Calculate distance between participants
+        let distance: number | null = null;
+        if (clientLocation && escortLocation) {
+          distance = this.haversineDistance(
+            clientLocation.lat, clientLocation.lng,
+            escortLocation.lat, escortLocation.lng,
+          );
+        }
+
+        // Geofence check (distance from booking location)
+        let clientGeofence: number | null = null;
+        let escortGeofence: number | null = null;
+        if (booking.locationLat && booking.locationLng) {
+          if (clientLocation) {
+            clientGeofence = this.haversineDistance(clientLocation.lat, clientLocation.lng, booking.locationLat, booking.locationLng);
+          }
+          if (escortLocation) {
+            escortGeofence = this.haversineDistance(escortLocation.lat, escortLocation.lng, booking.locationLat, booking.locationLng);
+          }
+        }
+
+        return {
+          id: booking.id,
+          status: booking.status,
+          serviceType: booking.serviceType,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+          location: booking.location,
+          locationLat: booking.locationLat,
+          locationLng: booking.locationLng,
+          checkinAt: booking.checkinAt,
+          checkoutAt: booking.checkoutAt,
+          totalAmount: booking.totalAmount,
+          client: booking.client,
+          escort: booking.escort,
+          payment: booking.payment,
+          incidents: booking.incidents,
+          tracking: {
+            clientLocation,
+            escortLocation,
+            distanceBetween: distance != null ? Math.round(distance * 100) / 100 : null,
+            clientGeofence: clientGeofence != null ? Math.round(clientGeofence * 100) / 100 : null,
+            escortGeofence: escortGeofence != null ? Math.round(escortGeofence * 100) / 100 : null,
+          },
+          alerts: {
+            lateStatus: lateCheck,
+            hasOpenIncidents: booking.incidents.length > 0,
+            hasSOS: booking.incidents.some(i => i.type === 'SOS'),
+            geofenceBreach: (clientGeofence != null && clientGeofence > 5) || (escortGeofence != null && escortGeofence > 5),
+          },
+        };
+      }),
+    );
+
+    return {
+      data: enriched,
+      summary: {
+        total: enriched.length,
+        ongoing: enriched.filter(b => b.status === 'ONGOING').length,
+        confirmed: enriched.filter(b => b.status === 'CONFIRMED').length,
+        withAlerts: enriched.filter(b => b.alerts.hasOpenIncidents || b.alerts.lateStatus || b.alerts.geofenceBreach).length,
+        withSOS: enriched.filter(b => b.alerts.hasSOS).length,
+      },
+    };
+  }
+
+  async getBookingMonitorDetail(bookingId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        client: {
+          select: {
+            id: true, firstName: true, lastName: true, email: true, phone: true,
+            profilePhoto: true, role: true, createdAt: true,
+          },
+        },
+        escort: {
+          select: {
+            id: true, firstName: true, lastName: true, email: true, phone: true,
+            profilePhoto: true, role: true, createdAt: true,
+            escortProfile: {
+              select: { tier: true, hourlyRate: true, ratingAvg: true, totalBookings: true, totalReviews: true, isApproved: true },
+            },
+          },
+        },
+        payment: true,
+        reviews: {
+          include: {
+            reviewer: { select: { firstName: true, lastName: true } },
+          },
+        },
+        incidents: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            reporter: { select: { firstName: true, lastName: true } },
+          },
+        },
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, senderId: true, content: true, type: true, readAt: true, createdAt: true },
+        },
+      },
+    });
+
+    if (!booking) throw new NotFoundException('Booking tidak ditemukan');
+
+    // Decrypt chat messages
+    if (booking.messages) {
+      booking.messages = booking.messages.map((msg: any) => ({
+        ...msg,
+        content: this.decryptSafe(msg.content),
+      }));
+    }
+
+    // Get live tracking data
+    const [clientLoc, escortLoc] = await Promise.all([
+      this.redis.getJSON<{ lat: number; lng: number; accuracy?: number; timestamp: number }>(`location:${bookingId}:${booking.clientId}`),
+      this.redis.getJSON<{ lat: number; lng: number; accuracy?: number; timestamp: number }>(`location:${bookingId}:${booking.escortId}`),
+    ]);
+
+    // Get location history
+    const redisClient = this.redis.getClient();
+    const [clientHistoryRaw, escortHistoryRaw] = await Promise.all([
+      redisClient.lrange(`location_history:${bookingId}:${booking.clientId}`, 0, -1),
+      redisClient.lrange(`location_history:${bookingId}:${booking.escortId}`, 0, -1),
+    ]);
+
+    const clientHistory = clientHistoryRaw.map((h: string) => JSON.parse(h));
+    const escortHistory = escortHistoryRaw.map((h: string) => JSON.parse(h));
+
+    // Calculate distance
+    let distanceBetween: number | null = null;
+    if (clientLoc && escortLoc) {
+      distanceBetween = Math.round(this.haversineDistance(clientLoc.lat, clientLoc.lng, escortLoc.lat, escortLoc.lng) * 100) / 100;
+    }
+
+    // Late status
+    const lateStatus = await this.getLateStatus(booking);
+
+    // Timeline events
+    const timeline = this.buildTimeline(booking);
+
+    return {
+      ...booking,
+      tracking: {
+        clientLocation: clientLoc,
+        escortLocation: escortLoc,
+        clientHistory,
+        escortHistory,
+        distanceBetween,
+        bookingLocation: {
+          lat: booking.locationLat,
+          lng: booking.locationLng,
+          address: booking.location,
+        },
+      },
+      lateStatus,
+      timeline,
+    };
+  }
+
+  private async getLateStatus(booking: { status: string; startTime: Date; endTime: Date; checkinAt: Date | null; checkoutAt: Date | null }) {
+    const now = new Date();
+    const start = new Date(booking.startTime);
+    const end = new Date(booking.endTime);
+
+    if (booking.status === 'CONFIRMED' && now > start && !booking.checkinAt) {
+      const mins = Math.floor((now.getTime() - start.getTime()) / 60000);
+      return { type: 'LATE_CHECKIN', minutes: mins, severity: mins > 60 ? 'CRITICAL' : mins > 30 ? 'WARNING' : 'INFO' };
+    }
+    if (booking.status === 'ONGOING' && now > end && !booking.checkoutAt) {
+      const mins = Math.floor((now.getTime() - end.getTime()) / 60000);
+      return { type: 'OVERTIME', minutes: mins, severity: mins > 60 ? 'CRITICAL' : mins > 30 ? 'WARNING' : 'INFO' };
+    }
+    return null;
+  }
+
+  private buildTimeline(booking: any) {
+    const events: { time: string; event: string; type: string }[] = [];
+    events.push({ time: booking.createdAt, event: 'Booking dibuat', type: 'INFO' });
+
+    if (booking.status !== 'PENDING') {
+      // Was confirmed/accepted at some point
+      events.push({ time: booking.updatedAt, event: 'Status: ' + booking.status, type: booking.status === 'CANCELLED' ? 'DANGER' : 'SUCCESS' });
+    }
+    if (booking.checkinAt) {
+      events.push({ time: booking.checkinAt, event: 'Check-in dilakukan', type: 'SUCCESS' });
+    }
+    if (booking.checkoutAt) {
+      events.push({ time: booking.checkoutAt, event: 'Check-out dilakukan', type: 'SUCCESS' });
+    }
+    if (booking.cancelledAt) {
+      events.push({ time: booking.cancelledAt, event: `Dibatalkan: ${booking.cancelReason || '-'}`, type: 'DANGER' });
+    }
+    if (booking.payment?.paidAt) {
+      events.push({ time: booking.payment.paidAt, event: 'Pembayaran diterima', type: 'SUCCESS' });
+    }
+    if (booking.payment?.releasedAt) {
+      events.push({ time: booking.payment.releasedAt, event: 'Payout dirilis ke escort', type: 'SUCCESS' });
+    }
+    if (booking.payment?.refundedAt) {
+      events.push({ time: booking.payment.refundedAt, event: 'Refund diproses', type: 'WARNING' });
+    }
+
+    // Incidents
+    for (const inc of (booking.incidents || [])) {
+      events.push({
+        time: inc.createdAt,
+        event: `${inc.type === 'SOS' ? '🚨 SOS' : '⚠️ Insiden'}: ${inc.description?.slice(0, 80) || '-'}`,
+        type: inc.type === 'SOS' ? 'CRITICAL' : 'WARNING',
+      });
+      if (inc.resolvedAt) {
+        events.push({ time: inc.resolvedAt, event: `Insiden resolved: ${inc.adminNotes?.slice(0, 60) || '-'}`, type: 'SUCCESS' });
+      }
+    }
+
+    // Sort by time
+    events.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+    return events;
+  }
+
+  private haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371; // km
+    const dLat = this.deg2rad(lat2 - lat1);
+    const dLng = this.deg2rad(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  private deg2rad(deg: number): number {
+    return deg * (Math.PI / 180);
+  }
+
+  // ── User Live Location ───────────────────────────────
+
+  async getUserLiveLocation(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, firstName: true, lastName: true },
+    });
+
+    if (!user) throw new NotFoundException('User tidak ditemukan');
+
+    // Find active bookings for this user
+    const activeBookings = await this.prisma.booking.findMany({
+      where: {
+        ...(user.role === 'ESCORT' ? { escortId: userId } : { clientId: userId }),
+        status: { in: ['CONFIRMED', 'ONGOING'] },
+      },
+      select: {
+        id: true,
+        status: true,
+        startTime: true,
+        endTime: true,
+        location: true,
+        locationLat: true,
+        locationLng: true,
+        serviceType: true,
+        client: { select: { id: true, firstName: true, lastName: true } },
+        escort: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { startTime: 'desc' },
+    });
+
+    // Get live locations from Redis for each active booking
+    const locations = await Promise.all(
+      activeBookings.map(async (booking) => {
+        // Get the viewed user's location
+        const locationKey = `location:${booking.id}:${userId}`;
+        const locationData = await this.redis.getJSON<{
+          lat: number;
+          lng: number;
+          accuracy?: number;
+          timestamp: number;
+        }>(locationKey);
+
+        // Get the other participant's location too
+        const otherUserId = user.role === 'ESCORT' ? booking.client.id : booking.escort.id;
+        const otherLocationKey = `location:${booking.id}:${otherUserId}`;
+        const otherLocationData = await this.redis.getJSON<{
+          lat: number;
+          lng: number;
+          accuracy?: number;
+          timestamp: number;
+        }>(otherLocationKey);
+
+        // Get location history for the viewed user
+        const historyKey = `location_history:${booking.id}:${userId}`;
+        const client = this.redis.getClient();
+        const historyRaw = await client.lrange(historyKey, 0, 49);
+        const history = historyRaw.map((h: string) => JSON.parse(h));
+
+        return {
+          booking: {
+            id: booking.id,
+            status: booking.status,
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+            location: booking.location,
+            locationLat: booking.locationLat,
+            locationLng: booking.locationLng,
+            serviceType: booking.serviceType,
+            client: booking.client,
+            escort: booking.escort,
+          },
+          currentLocation: locationData,
+          otherParticipantLocation: otherLocationData,
+          locationHistory: history,
+        };
+      }),
+    );
+
+    return {
+      userId,
+      userName: `${user.firstName} ${user.lastName}`,
+      role: user.role,
+      activeBookings: locations,
+      // General GPS ping (independent of bookings) — stored when user grants GPS permission
+      lastKnownLocation: await this.redis.getJSON<{
+        lat: number;
+        lng: number;
+        accuracy?: number;
+        timestamp: number;
+      }>(`user_location:${userId}`),
+    };
+  }
+
+  async listUsers(rawPage = 1, rawLimit = 20, role?: string, search?: string) {
+    const page = Math.max(1, Number(rawPage) || 1);
+    const limit = Math.max(1, Math.min(100, Number(rawLimit) || 20));
     const skip = (page - 1) * limit;
 
     const where: Prisma.UserWhereInput = {
@@ -114,7 +619,8 @@ export class AdminService {
     };
   }
 
-  async getPendingEscorts(page = 1) {
+  async getPendingEscorts(rawPage = 1) {
+    const page = Math.max(1, Number(rawPage) || 1);
     const limit = 20;
     const skip = (page - 1) * limit;
 
@@ -150,7 +656,7 @@ export class AdminService {
   async verifyEscort(escortProfileId: string, approved: boolean, reason?: string) {
     const profile = await this.prisma.escortProfile.findUnique({
       where: { id: escortProfileId },
-      include: { user: { select: { id: true, firstName: true } } },
+      include: { user: { select: { id: true, email: true, firstName: true } } },
     });
 
     if (!profile) throw new NotFoundException('Escort profile tidak ditemukan');
@@ -171,7 +677,30 @@ export class AdminService {
       });
     }
 
-    // TODO: Send notification to escort about approval/rejection
+    // Send notification to escort about approval/rejection
+    await this.notificationService.create(
+      profile.userId,
+      approved ? 'Profil Diverifikasi' : 'Verifikasi Ditolak',
+      approved
+        ? 'Selamat! Profil escort Anda telah disetujui dan kini aktif.'
+        : `Maaf, profil Anda ditolak${reason ? ': ' + reason : '. Silakan perbaiki dan ajukan ulang.'}`,
+      'SYSTEM',
+    );
+
+    // Send email notification
+    if (approved) {
+      this.emailService.sendEscortApproved(profile.user.email, {
+        name: profile.user.firstName,
+      }).catch(() => {});
+    }
+
+    await this.audit.log({
+      action: approved ? 'ESCORT_APPROVED' : 'ESCORT_REJECTED',
+      resource: 'escort_profiles',
+      resourceId: escortProfileId,
+      details: { approved, reason, escortName: profile.user.firstName },
+      severity: 'INFO',
+    });
 
     return {
       ...updated,
@@ -185,13 +714,24 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User tidak ditemukan');
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data: { isActive },
     });
+
+    await this.audit.log({
+      action: isActive ? 'USER_ACTIVATED' : 'USER_DEACTIVATED',
+      resource: 'users',
+      resourceId: userId,
+      details: { userName: `${user.firstName} ${user.lastName}`, isActive },
+      severity: 'WARN',
+    });
+
+    return updated;
   }
 
-  async listIncidents(page = 1, status?: string, type?: string) {
+  async listIncidents(rawPage = 1, status?: string, type?: string) {
+    const page = Math.max(1, Number(rawPage) || 1);
     const limit = 20;
     const skip = (page - 1) * limit;
 
@@ -388,7 +928,8 @@ export class AdminService {
     });
   }
 
-  async listPromoCodes(page = 1, isActive?: boolean) {
+  async listPromoCodes(rawPage = 1, isActive?: boolean) {
+    const page = Math.max(1, Number(rawPage) || 1);
     const limit = 20;
     const skip = (page - 1) * limit;
 
@@ -415,6 +956,9 @@ export class AdminService {
     id: string,
     data: { isActive?: boolean; usageLimit?: number; validUntil?: string; maxDiscount?: number },
   ) {
+    const existing = await this.prisma.promoCode.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Promo code tidak ditemukan');
+
     const updateData: any = {};
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (data.usageLimit !== undefined) updateData.usageLimit = data.usageLimit;
@@ -428,6 +972,9 @@ export class AdminService {
   }
 
   async deletePromoCode(id: string) {
+    const existing = await this.prisma.promoCode.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Promo code tidak ditemukan');
+
     await this.prisma.promoCode.delete({ where: { id } });
     return { message: 'Promo code berhasil dihapus' };
   }
@@ -476,5 +1023,87 @@ export class AdminService {
       where: { code: code.toUpperCase() },
       data: { usageCount: { increment: 1 } },
     });
+  }
+
+  // ── Certifications ──────────────────────────────────
+
+  async getPendingCertifications(page = 1) {
+    const limit = 20;
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await Promise.all([
+      this.prisma.certification.findMany({
+        where: { isVerified: false },
+        include: {
+          escort: {
+            include: {
+              user: { select: { id: true, firstName: true, lastName: true, email: true, profilePhoto: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.certification.count({ where: { isVerified: false } }),
+    ]);
+
+    return {
+      data: items.map((c) => ({
+        id: c.id,
+        certType: c.certType,
+        certName: c.certName,
+        issuer: c.issuer,
+        validUntil: c.validUntil,
+        documentUrl: c.documentUrl,
+        createdAt: c.createdAt,
+        escort: {
+          id: c.escort.id,
+          userId: c.escort.user.id,
+          name: `${c.escort.user.firstName} ${c.escort.user.lastName}`,
+          email: c.escort.user.email,
+          photo: c.escort.user.profilePhoto,
+        },
+      })),
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async verifyCertification(certId: string, approved: boolean) {
+    const cert = await this.prisma.certification.findUnique({
+      where: { id: certId },
+      include: { escort: { include: { user: { select: { id: true, firstName: true, lastName: true } } } } },
+    });
+
+    if (!cert) throw new NotFoundException('Certification not found');
+
+    if (approved) {
+      await this.prisma.certification.update({
+        where: { id: certId },
+        data: { isVerified: true },
+      });
+
+      await this.notificationService.create(
+        cert.escort.user.id,
+        'Sertifikasi Disetujui',
+        `Sertifikasi "${cert.certName}" Anda telah diverifikasi.`,
+        'CERTIFICATION',
+      );
+
+      return { message: 'Certification approved' };
+    } else {
+      await this.prisma.certification.delete({ where: { id: certId } });
+
+      await this.notificationService.create(
+        cert.escort.user.id,
+        'Sertifikasi Ditolak',
+        `Sertifikasi "${cert.certName}" Anda ditolak. Silakan upload ulang dengan dokumen yang valid.`,
+        'CERTIFICATION',
+      );
+
+      return { message: 'Certification rejected and removed' };
+    }
   }
 }

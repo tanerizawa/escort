@@ -6,9 +6,19 @@ export class CreatePaymentDto {
   @IsString()
   bookingId: string;
 
-  @ApiProperty({ description: 'Payment method (e.g., MIDTRANS, XENDIT, BANK_TRANSFER)' })
+  @ApiProperty({ description: 'Payment method', enum: ['crypto', 'crypto_eth', 'crypto_usdt', 'crypto_btc', 'crypto_sol', 'crypto_xrp', 'doku', 'doku_va', 'doku_ewallet', 'doku_qris', 'doku_cc', 'doku_retail', 'bank_transfer', 'ewallet', 'qris', 'credit_card', 'retail_outlet'] })
   @IsString()
   method: string;
+
+  @ApiPropertyOptional({ description: 'Bank type for bank_transfer', enum: ['bca', 'bni', 'bri', 'mandiri', 'permata'] })
+  @IsOptional()
+  @IsString()
+  bankType?: string;
+
+  @ApiPropertyOptional({ description: 'Payment type: FULL (100%) or DP_50 (50% down payment)', enum: ['FULL', 'DP_50'], default: 'FULL' })
+  @IsOptional()
+  @IsString()
+  paymentType?: string;
 
   @ApiPropertyOptional({ description: 'Tip amount' })
   @IsOptional()
@@ -49,6 +59,11 @@ export class WithdrawRequestDto {
   @ApiProperty({ description: 'Bank name' })
   @IsString()
   bankName: string;
+
+  @ApiPropertyOptional({ description: 'Account holder name' })
+  @IsOptional()
+  @IsString()
+  accountHolder?: string;
 }
 
 export class RefundPaymentDto {

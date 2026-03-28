@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '@/config/prisma.service';
 import { EncryptionService } from '@/common/services/encryption.service';
@@ -73,7 +74,10 @@ export class ChatService {
     return rooms;
   }
 
-  async getMessages(userId: string, bookingId: string, page = 1, limit = 50) {
+  async getMessages(userId: string, bookingId: string, rawPage = 1, rawLimit = 50) {
+    const page = Math.max(1, Number(rawPage) || 1);
+    const limit = Math.max(1, Math.min(100, Number(rawLimit) || 50));
+
     // Verify user is part of booking
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
@@ -119,8 +123,11 @@ export class ChatService {
   }
 
   async sendMessage(senderId: string, dto: SendMessageDto) {
+    const bookingId = dto.bookingId;
+    if (!bookingId) throw new BadRequestException('bookingId is required');
+
     const booking = await this.prisma.booking.findUnique({
-      where: { id: dto.bookingId },
+      where: { id: bookingId },
     });
 
     if (!booking) throw new NotFoundException('Booking tidak ditemukan');
@@ -137,7 +144,7 @@ export class ChatService {
 
     const message = await this.prisma.chatMessage.create({
       data: {
-        bookingId: dto.bookingId,
+        bookingId,
         senderId,
         content: encryptedContent,
         type: dto.type || 'TEXT',

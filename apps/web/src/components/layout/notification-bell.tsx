@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
+import { useAuthStore } from '@/stores/auth.store';
+import { AlertTriangle, Bell, ClipboardList, DollarSign, MessageCircle, Star } from 'lucide-react';
+import { Icon } from '@/components/ui/icon';
 
 interface Notification {
   id: string;
@@ -20,12 +23,23 @@ export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
     loadUnreadCount();
-    const interval = setInterval(loadUnreadCount, 30000); // poll every 30s
-    return () => clearInterval(interval);
-  }, []);
+    intervalRef.current = setInterval(loadUnreadCount, 30000); // poll every 30s
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [user]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -39,10 +53,19 @@ export function NotificationBell() {
 
   const loadUnreadCount = async () => {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+      if (!token) {
+        if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+        return;
+      }
       const res = await api.get('/notifications/unread-count');
-      setUnreadCount(res.data?.count || 0);
-    } catch {
-      // silent
+      const d = res.data?.data || res.data;
+      setUnreadCount(d?.count || 0);
+    } catch (err: any) {
+      if (err?.response?.status === 401 || err?.message === 'No refresh token') {
+        if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+        setUnreadCount(0);
+      }
     }
   };
 
@@ -50,7 +73,8 @@ export function NotificationBell() {
     setLoading(true);
     try {
       const res = await api.get('/notifications', { params: { limit: 10 } });
-      setNotifications(res.data?.data || res.data || []);
+      const payload = res.data?.data || res.data;
+      setNotifications(Array.isArray(payload) ? payload : (payload?.data || []));
     } catch {
       // silent
     } finally {
@@ -104,18 +128,18 @@ export function NotificationBell() {
       case 'BOOKING_NEW':
       case 'BOOKING_ACCEPTED':
       case 'BOOKING_REJECTED':
-        return '📋';
+        return 'ClipboardList';
       case 'PAYMENT_RECEIVED':
       case 'PAYMENT_RELEASED':
-        return '💰';
+        return 'DollarSign';
       case 'CHAT_MESSAGE':
-        return '💬';
+        return 'MessageCircle';
       case 'REVIEW_NEW':
-        return '⭐';
+        return 'Star';
       case 'SOS_ALERT':
-        return '🚨';
+        return 'AlertTriangle';
       default:
-        return '🔔';
+        return 'Bell';
     }
   };
 
@@ -168,7 +192,7 @@ export function NotificationBell() {
               </div>
             ) : notifications.length === 0 ? (
               <div className="py-8 text-center">
-                <div className="mb-2 text-2xl">🔔</div>
+                <div className="mb-2"><Bell className="h-7 w-7" /></div>
                 <p className="text-xs text-dark-500">Belum ada notifikasi</p>
               </div>
             ) : (
@@ -180,7 +204,7 @@ export function NotificationBell() {
                     !notif.isRead ? 'bg-brand-400/5' : ''
                   }`}
                 >
-                  <span className="mt-0.5 text-lg">{getIcon(notif.type)}</span>
+                  <span className="mt-0.5"><Icon name={getIcon(notif.type)} className="h-5 w-5 text-brand-400" /></span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <p className={`text-sm ${!notif.isRead ? 'font-medium text-dark-100' : 'text-dark-300'}`}>
@@ -202,7 +226,7 @@ export function NotificationBell() {
           {notifications.length > 0 && (
             <div className="border-t border-dark-700 px-4 py-2">
               <Link
-                href="/notifications"
+                href={user?.role === 'ESCORT' ? '/escort/notifications' : '/user/notifications'}
                 className="block text-center text-xs text-brand-400 hover:text-brand-300 transition-colors"
                 onClick={() => setIsOpen(false)}
               >

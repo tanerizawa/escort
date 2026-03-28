@@ -5,41 +5,172 @@
 @layer base {
   :root {
     --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-playfair: 'Playfair Display', Georgia, serif;
+    --font-cormorant: 'Cormorant Garamond', Georgia, serif;
   }
 
   body {
     @apply bg-dark-900 text-dark-100 antialiased;
   }
 
-  /* Custom scrollbar */
+  ::selection {
+    background: rgba(201, 169, 110, 0.3);
+    color: #f9edda;
+  }
+
   ::-webkit-scrollbar {
-    @apply w-1.5;
+    @apply w-1;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-dark-900;
+    @apply bg-dark-950;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-dark-600 rounded-full;
+    @apply bg-brand-400/30 rounded-full;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-dark-500;
+    @apply bg-brand-400/50;
   }
 }
 
 @layer components {
   /* Gold gradient text */
   .text-gradient-gold {
-    @apply bg-gradient-to-r from-brand-300 via-brand-400 to-brand-300 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-brand-200 via-brand-400 to-brand-300 bg-clip-text text-transparent;
+  }
+
+  /* Decorative thin gold line */
+  .gold-line {
+    @apply h-px bg-gradient-to-r from-transparent via-brand-400/40 to-transparent;
+  }
+
+  .gold-line-left {
+    @apply h-px bg-gradient-to-r from-brand-400/50 to-transparent;
   }
 
   /* Glass morphism card */
   .glass-card {
-    @apply bg-dark-800/50 backdrop-blur-sm border border-dark-600/20 rounded-xl;
+    @apply bg-dark-800/40 backdrop-blur-md border border-dark-600/15 rounded-2xl;
   }
 
   /* Gold border card */
   .gold-card {
-    @apply bg-gradient-to-br from-brand-400/5 to-brand-400/[0.02] border border-brand-400/15 rounded-xl;
+    @apply bg-gradient-to-br from-brand-400/[0.06] to-transparent border border-brand-400/10 rounded-2xl;
+  }
+
+  /* Magazine editorial block */
+  .editorial-block {
+    @apply relative overflow-hidden;
+  }
+  .editorial-block::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-b from-dark-900/0 via-dark-900/20 to-dark-900;
+  }
+
+  /* Section divider — magazine style */
+  .section-divider {
+    @apply relative py-8 flex items-center justify-center;
+  }
+  .section-divider::before,
+  .section-divider::after {
+    content: '';
+    @apply flex-1 h-px bg-gradient-to-r;
+  }
+  .section-divider::before {
+    @apply from-transparent to-brand-400/30;
+  }
+  .section-divider::after {
+    @apply from-brand-400/30 to-transparent;
+  }
+
+  /* Magazine caption style */
+  .caption {
+    @apply font-sans text-[11px] uppercase tracking-widest-2 text-brand-400 font-medium;
+  }
+
+  /* Editorial heading */
+  .heading-editorial {
+    @apply font-display text-display-md font-medium text-dark-100 tracking-tight;
+  }
+
+  /* Elegant image overlay */
+  .img-overlay {
+    @apply absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/30 to-transparent;
+  }
+
+  /* Pull quote */
+  .pull-quote {
+    @apply font-serif text-2xl md:text-3xl font-light italic text-dark-200 leading-relaxed;
+    @apply border-l-2 border-brand-400/40 pl-6 my-8;
+  }
+
+  /* Artsy decorative corner ornaments */
+  .art-corner {
+    @apply absolute pointer-events-none;
+  }
+  .art-corner::before,
+  .art-corner::after {
+    content: '';
+    @apply absolute bg-brand-400/20;
+  }
+  .art-corner--tl::before { @apply top-0 left-0 w-8 h-px; }
+  .art-corner--tl::after  { @apply top-0 left-0 w-px h-8; }
+  .art-corner--tr::before { @apply top-0 right-0 w-8 h-px; }
+  .art-corner--tr::after  { @apply top-0 right-0 w-px h-8; }
+  .art-corner--bl::before { @apply bottom-0 left-0 w-8 h-px; }
+  .art-corner--bl::after  { @apply bottom-0 left-0 w-px h-8; }
+  .art-corner--br::before { @apply bottom-0 right-0 w-8 h-px; }
+  .art-corner--br::after  { @apply bottom-0 right-0 w-px h-8; }
+
+  /* Art deco geometric pattern background */
+  .art-deco-bg {
+    background-image:
+      linear-gradient(30deg, rgba(201,169,110,0.03) 12%, transparent 12.5%),
+      linear-gradient(150deg, rgba(201,169,110,0.03) 12%, transparent 12.5%),
+      linear-gradient(210deg, rgba(201,169,110,0.03) 12%, transparent 12.5%),
+      linear-gradient(330deg, rgba(201,169,110,0.03) 12%, transparent 12.5%);
+    background-size: 80px 140px;
+    background-position: 0 0, 0 0, 0 0, 0 0;
+  }
+
+  /* Shimmer sweep animation for cards */
+  .shimmer-sweep {
+    @apply relative overflow-hidden;
+  }
+  .shimmer-sweep::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full;
+    background: linear-gradient(90deg, transparent, rgba(201,169,110,0.06), transparent);
+    animation: shimmerSweep 3s ease-in-out infinite;
+  }
+
+  /* Cinematic vignette effect */
+  .vignette {
+    box-shadow: inset 0 0 120px rgba(0,0,0,0.4);
+  }
+
+  /* Artsy step card with gradient glow */
+  .step-art-card {
+    @apply relative overflow-hidden;
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(201,169,110,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse at 70% 80%, rgba(201,169,110,0.04) 0%, transparent 60%),
+      linear-gradient(180deg, rgba(15,23,42,0.5) 0%, rgba(11,17,32,0.8) 100%);
+  }
+
+  /* Dashboard visual accent strip */
+  .accent-strip {
+    @apply relative;
+  }
+  .accent-strip::before {
+    content: '';
+    @apply absolute left-0 top-0 bottom-0 w-[3px] rounded-full;
+    background: linear-gradient(180deg, rgba(201,169,110,0.6) 0%, rgba(201,169,110,0.1) 100%);
+  }
+
+  /* Floating orb decoration */
+  .art-orb {
+    @apply absolute rounded-full blur-3xl pointer-events-none;
+    background: radial-gradient(circle, rgba(201,169,110,0.08), transparent 70%);
   }
 }
 
@@ -47,4 +178,36 @@
   .animate-in {
     @apply animate-fade-in;
   }
+
+  /* Stagger children animation */
+  .stagger-children > * {
+    @apply opacity-0 animate-fade-in-up;
+  }
+  .stagger-children > *:nth-child(1) { animation-delay: 0s; }
+  .stagger-children > *:nth-child(2) { animation-delay: 0.1s; }
+  .stagger-children > *:nth-child(3) { animation-delay: 0.2s; }
+  .stagger-children > *:nth-child(4) { animation-delay: 0.3s; }
+  .stagger-children > *:nth-child(5) { animation-delay: 0.4s; }
+  .stagger-children > *:nth-child(6) { animation-delay: 0.5s; }
+
+  /* Smooth page content entry */
+  .page-enter {
+    animation: pageEnter 0.5s ease-out both;
+  }
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmerSweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }

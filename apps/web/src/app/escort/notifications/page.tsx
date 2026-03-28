@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import api from '@/lib/api';
+import { AlertTriangle, Bell, CheckCircle2, ClipboardList, DollarSign, MessageCircle, Star } from 'lucide-react';
+import { Icon } from '@/components/ui/icon';
 
 interface Notification {
   id: string;
@@ -18,15 +20,25 @@ export default function EscortNotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     loadNotifications();
-  }, []);
+  }, [page, filter]);
 
   const loadNotifications = async () => {
     try {
-      const res = await api.get('/notifications');
-      setNotifications(res.data?.data || res.data || []);
+      setLoading(true);
+      const res = await api.get('/notifications', {
+        params: { page, limit: 20, ...(filter === 'unread' ? { unreadOnly: true } : {}) },
+      });
+      const payload = res.data?.data || res.data;
+      const items = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
+      setNotifications(items);
+      if (payload?.pagination) {
+        setTotalPages(payload.pagination.totalPages || 1);
+      }
     } catch (err) {
       console.error('Failed to load notifications', err);
     } finally {
@@ -63,15 +75,19 @@ export default function EscortNotificationsPage() {
 
   const getIcon = (type: string) => {
     const icons: Record<string, string> = {
-      BOOKING_NEW: '📋', BOOKING_ACCEPTED: '📋', BOOKING_REJECTED: '📋',
-      PAYMENT_RECEIVED: '💰', PAYMENT_RELEASED: '💰',
-      CHAT_MESSAGE: '💬', REVIEW_NEW: '⭐', SOS_ALERT: '🚨', VERIFICATION: '✅',
+      BOOKING_NEW: 'ClipboardList', BOOKING_ACCEPTED: 'ClipboardList', BOOKING_REJECTED: 'ClipboardList',
+      PAYMENT_RECEIVED: 'DollarSign', PAYMENT_RELEASED: 'DollarSign',
+      CHAT_MESSAGE: 'MessageCircle', REVIEW_NEW: 'Star', SOS_ALERT: 'AlertTriangle', VERIFICATION: 'CheckCircle2',
     };
-    return icons[type] || '🔔';
+    return icons[type] || 'Bell';
   };
 
-  const filtered = filter === 'unread' ? notifications.filter((n) => !n.isRead) : notifications;
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const unreadCount = (notifications || []).filter((n) => !n.isRead).length;
+
+  const handleFilterChange = (f: 'all' | 'unread') => {
+    setFilter(f);
+    setPage(1);
+  };
 
   return (
     <div>
@@ -93,7 +109,7 @@ export default function EscortNotificationsPage() {
         {(['all', 'unread'] as const).map((f) => (
           <button
             key={f}
-            onClick={() => setFilter(f)}
+            onClick={() => handleFilterChange(f)}
             className={`rounded-lg px-4 py-2 text-sm transition-colors ${
               filter === f ? 'bg-brand-400/10 text-brand-400' : 'text-dark-400 hover:text-dark-200'
             }`}
@@ -112,11 +128,11 @@ export default function EscortNotificationsPage() {
         <div className="flex items-center justify-center py-20">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-400/30 border-t-brand-400" />
         </div>
-      ) : filtered.length === 0 ? (
+      ) : notifications.length === 0 ? (
         <Card>
           <CardContent>
             <div className="py-16 text-center">
-              <div className="mb-4 text-4xl">🔔</div>
+              <div className="mb-4"><Bell className="h-10 w-10" /></div>
               <h3 className="text-lg font-light text-dark-200">
                 {filter === 'unread' ? 'Semua Sudah Dibaca' : 'Belum Ada Notifikasi'}
               </h3>
@@ -125,7 +141,7 @@ export default function EscortNotificationsPage() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {filtered.map((notif) => (
+          {notifications.map((notif) => (
             <div
               key={notif.id}
               className={`rounded-xl border p-4 transition-all ${
@@ -133,7 +149,7 @@ export default function EscortNotificationsPage() {
               }`}
             >
               <div className="flex items-start gap-3">
-                <span className="mt-0.5 text-xl">{getIcon(notif.type)}</span>
+                <span className="mt-0.5"><Icon name={getIcon(notif.type)} className="h-5 w-5 text-brand-400" /></span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -156,6 +172,29 @@ export default function EscortNotificationsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-center gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="rounded-lg border border-dark-600/50 px-3 py-2 text-sm text-dark-300 transition-colors hover:border-dark-500/50 disabled:opacity-30"
+          >
+            Sebelumnya
+          </button>
+          <span className="text-sm text-dark-400">
+            Halaman {page} dari {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="rounded-lg border border-dark-600/50 px-3 py-2 text-sm text-dark-300 transition-colors hover:border-dark-500/50 disabled:opacity-30"
+          >
+            Selanjutnya
+          </button>
         </div>
       )}
     </div>

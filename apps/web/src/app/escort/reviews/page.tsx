@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Star } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -11,9 +12,9 @@ interface Review {
   id: string;
   rating: number;
   comment?: string;
-  reply?: string;
+  replyComment?: string;
   createdAt: string;
-  client: {
+  reviewer: {
     firstName: string;
     lastName: string;
     profilePhoto?: string;
@@ -28,17 +29,26 @@ export default function EscortReviewsPage() {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     if (user?.id) loadReviews();
-  }, [user?.id]);
+  }, [user?.id, page]);
 
   const loadReviews = async () => {
     try {
-      const res = await api.get(`/reviews/escort/${user!.id}`);
-      const data = res.data;
-      setReviews(data.reviews || data.data || []);
-      setAverageRating(data.averageRating || 0);
+      setLoading(true);
+      const res = await api.get(`/reviews/escort/${user!.id}`, { params: { page, limit: 10 } });
+      const payload = res.data?.data || res.data;
+      const reviewsData = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
+      setReviews(reviewsData);
+      setAverageRating(payload?.averageRating || 0);
+      if (payload?.pagination) {
+        setTotalPages(payload.pagination.totalPages || 1);
+        setTotal(payload.pagination.total || 0);
+      }
     } catch (err) {
       console.error('Failed to load reviews', err);
     } finally {
@@ -50,9 +60,9 @@ export default function EscortReviewsPage() {
     if (!replyText.trim()) return;
     setSubmitting(true);
     try {
-      await api.post(`/reviews/${reviewId}/reply`, { reply: replyText.trim() });
+      await api.patch(`/reviews/${reviewId}/reply`, { replyComment: replyText.trim() });
       setReviews((prev) =>
-        prev.map((r) => (r.id === reviewId ? { ...r, reply: replyText.trim() } : r))
+        prev.map((r) => (r.id === reviewId ? { ...r, replyComment: replyText.trim() } : r))
       );
       setReplyingTo(null);
       setReplyText('');
@@ -90,7 +100,7 @@ export default function EscortReviewsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-light text-dark-100">Ulasan Saya</h1>
         <p className="mt-1 text-sm text-dark-400">
-          {reviews.length} ulasan • Rating rata-rata {averageRating.toFixed(1)}/5.0
+          {total} ulasan • Rating rata-rata {averageRating.toFixed(1)}/5.0
         </p>
       </div>
 
@@ -102,18 +112,18 @@ export default function EscortReviewsPage() {
           <p className="mt-1 text-xs text-dark-500">Rating Rata-rata</p>
         </div>
         <div className="rounded-xl border border-dark-700/50 bg-dark-800/50 p-4 text-center">
-          <p className="text-3xl font-light text-dark-100">{reviews.length}</p>
+          <p className="text-3xl font-light text-dark-100">{total}</p>
           <p className="mt-2 text-xs text-dark-500">Total Ulasan</p>
         </div>
         <div className="rounded-xl border border-dark-700/50 bg-dark-800/50 p-4 text-center">
           <p className="text-3xl font-light text-dark-100">
             {reviews.filter((r) => r.rating >= 4).length}
           </p>
-          <p className="mt-2 text-xs text-dark-500">Positif (4-5⭐)</p>
+          <p className="mt-2 text-xs text-dark-500">Positif (4-5★)</p>
         </div>
         <div className="rounded-xl border border-dark-700/50 bg-dark-800/50 p-4 text-center">
           <p className="text-3xl font-light text-dark-100">
-            {reviews.filter((r) => r.reply).length}
+            {reviews.filter((r) => r.replyComment).length}
           </p>
           <p className="mt-2 text-xs text-dark-500">Sudah Dibalas</p>
         </div>
@@ -127,7 +137,7 @@ export default function EscortReviewsPage() {
         <Card>
           <CardContent>
             <div className="py-16 text-center">
-              <div className="mb-4 text-4xl">⭐</div>
+              <div className="mb-4 flex justify-center"><Star className="h-10 w-10 text-brand-400" /></div>
               <h3 className="text-lg font-light text-dark-200">Belum Ada Ulasan</h3>
               <p className="mt-2 text-sm text-dark-500">
                 Ulasan akan muncul setelah booking selesai.
@@ -143,23 +153,23 @@ export default function EscortReviewsPage() {
               className="rounded-xl border border-dark-700/50 bg-dark-800/50 p-5"
             >
               <div className="flex items-start gap-3">
-                {review.client.profilePhoto ? (
+                {review?.reviewer?.profilePhoto ? (
                   <img
-                    src={review.client.profilePhoto}
+                    src={review.reviewer.profilePhoto}
                     alt=""
                     className="h-10 w-10 rounded-full object-cover"
                   />
                 ) : (
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-400/10">
                     <span className="text-sm font-medium text-brand-400">
-                      {review.client.firstName[0]}
+                      {review?.reviewer?.firstName?.[0] || '?'}
                     </span>
                   </div>
                 )}
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-medium text-dark-200">
-                      {review.client.firstName} {review.client.lastName[0]}.
+                      {review?.reviewer?.firstName} {review?.reviewer?.lastName?.[0]}.
                     </h4>
                     <span className="text-xs text-dark-500">{formatDate(review.createdAt)}</span>
                   </div>
@@ -169,10 +179,10 @@ export default function EscortReviewsPage() {
                   )}
 
                   {/* Reply */}
-                  {review.reply ? (
+                  {review.replyComment ? (
                     <div className="mt-3 rounded-lg border-l-2 border-brand-400/30 bg-dark-700/30 p-3">
                       <p className="text-xs font-medium text-brand-400">Balasan Anda</p>
-                      <p className="mt-1 text-sm text-dark-300">{review.reply}</p>
+                      <p className="mt-1 text-sm text-dark-300">{review.replyComment}</p>
                     </div>
                   ) : replyingTo === review.id ? (
                     <div className="mt-3 space-y-2">
@@ -214,6 +224,29 @@ export default function EscortReviewsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-center gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="rounded-lg border border-dark-600/50 px-3 py-2 text-sm text-dark-300 transition-colors hover:border-dark-500/50 disabled:opacity-30"
+          >
+            Sebelumnya
+          </button>
+          <span className="text-sm text-dark-400">
+            Halaman {page} dari {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="rounded-lg border border-dark-600/50 px-3 py-2 text-sm text-dark-300 transition-colors hover:border-dark-500/50 disabled:opacity-30"
+          >
+            Selanjutnya
+          </button>
         </div>
       )}
     </div>

@@ -46,8 +46,8 @@ export default function SOSButton({ bookingId, isVisible = true }: SOSButtonProp
         // Location not available, proceed without it
       }
 
-      const token = localStorage.getItem('token');
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/incidents/sos`, {
+      const token = localStorage.getItem('accessToken');
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/safety/sos`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

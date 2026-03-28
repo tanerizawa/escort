@@ -7,9 +7,10 @@ enum ChatMessageType {
 }
 
 export class SendMessageDto {
-  @ApiProperty({ description: 'Booking ID (acts as chat room)' })
+  @ApiPropertyOptional({ description: 'Booking ID (acts as chat room) — provided via URL param' })
+  @IsOptional()
   @IsString()
-  bookingId: string;
+  bookingId?: string;
 
   @ApiProperty({ description: 'Message content (will be encrypted)' })
   @IsString()

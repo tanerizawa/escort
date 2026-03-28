@@ -22,8 +22,14 @@ export class MatchingService {
   }) {
     const { serviceType, date, duration, location, preferredTier, languages, limit = 10 } = params;
 
+    // Validate inputs
+    if (!date || isNaN(Date.parse(date))) {
+      return { results: [], total: 0, params: { serviceType, date, duration, preferredTier } };
+    }
+    const safeDuration = Number(duration) || 1;
+
     const startTime = new Date(date);
-    const endTime = new Date(startTime.getTime() + duration * 60 * 60 * 1000);
+    const endTime = new Date(startTime.getTime() + safeDuration * 60 * 60 * 1000);
 
     // Step 1: Base query — approved, active escorts
     const escorts = await this.prisma.escortProfile.findMany({
@@ -60,8 +66,9 @@ export class MatchingService {
     const scored = available.map((escort) => {
       let score = 0;
 
-      // Rating weight (40%)
-      score += (escort.ratingAvg / 5) * 40;
+      // Rating weight (40%) — guard against null/NaN
+      const ratingVal = Number(escort.ratingAvg) || 0;
+      score += (ratingVal / 5) * 40;
 
       // Experience weight (20%)
       const bookingScore = Math.min(escort.totalBookings / 100, 1);
@@ -87,7 +94,7 @@ export class MatchingService {
         tier: escort.tier,
         rating: escort.ratingAvg,
         totalBookings: escort.totalBookings,
-        hourlyRate: escort.hourlyRate.toNumber(),
+        hourlyRate: escort.hourlyRate ? escort.hourlyRate.toNumber() : 0,
         languages: escort.languages,
         skills: escort.skills,
         certifications: escort.certifications.map((c) => c.certName),

@@ -31,6 +31,16 @@ export class ReviewController {
     return this.reviewService.create(reviewerId, dto);
   }
 
+  @Get('mine')
+  @ApiOperation({ summary: 'Get reviews written by the current user' })
+  async getMyReviews(
+    @CurrentUser('id') userId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.reviewService.findByReviewer(userId, page, limit);
+  }
+
   @Get('escort/:escortId')
   @ApiOperation({ summary: 'Get reviews for an escort' })
   async getEscortReviews(
