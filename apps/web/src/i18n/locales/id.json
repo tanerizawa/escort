@@ -65,34 +65,108 @@
   },
   "landing": {
     "tagline": "Professional Companion Service",
-    "heroTitle": "Pendamping Profesional",
-    "heroHighlight": "Berkelas & Terverifikasi",
-    "heroDesc": "Platform premium yang menghubungkan Anda dengan companion profesional terverifikasi untuk meeting bisnis, dinner formal, event, dan kebutuhan profesional lainnya.",
-    "ctaStart": "Mulai Sekarang",
+    "prologueMark": "Prolog",
+    "heroEyebrow": "Platform pendamping profesional untuk kalangan profesional dan bisnis.",
+    "heroTitle": "Keindahan yang",
+    "heroHighlight": "ditempa oleh presisi",
+    "heroDesc": "Sebuah mawar mekar sempurna bukan karena lembut pada semua hal — melainkan karena ia tahu kapan harus berduri. ARETON adalah rumah bagi pendamping profesional yang memahami bahasa kemapanan, kepantasan, dan kepuasan yang terkurasi.",
+    "ctaStart": "Mulai Perjalanan",
     "ctaPartner": "Bergabung Sebagai Partner",
-    "servicesTitle": "Layanan Kami",
+
+    "subRosaMark": "Babak I · Sub Rosa",
+    "subRosaTitle": "Di bawah mawar, sebuah janji",
+    "subRosaBody": "Di ruang-ruang Romawi, mawar tergantung di langit-langit sebagai isyarat bahwa apapun yang dikatakan di bawahnya adalah rahasia bersama. ARETON meneruskan adab itu: setiap perjumpaan dijaga dalam privasi penuh, setiap identitas diverifikasi, setiap transaksi dikunci escrow sebelum pertemuan dimulai.",
+    "subRosaQuote": "\u201cQuicquid sub rosa dictum — apa pun yang diucapkan di bawah mawar, di sanalah ia tinggal.\u201d",
+
+    "essencesMark": "Babak II · Tiga Esensi",
+    "essencesTitle": "Kemapanan. Keindahan. Kepuasan.",
+    "essencesLead": "ARETON tidak merayakan permukaan. Ia merayakan tiga esensi yang, sejak abad ke-abad, melekat pada mawar — dan pada setiap pertemuan yang pantas untuk diingat.",
+    "essences": {
+      "kemapanan": {
+        "title": "Kemapanan",
+        "century": "Babak Romawi, abad I",
+        "desc": "Mawar bukan bunga liar — ia adalah bunga istana, dikaitkan dengan Venus dan para senator. ARETON dibangun untuk para profesional yang paham bahwa standar tertinggi tidak bisa ditawar; verifikasi ketat, portofolio terkurasi, dan tim pendukung 24/7 adalah fondasinya."
+      },
+      "keindahan": {
+        "title": "Keindahan",
+        "century": "Ghazal Persia, abad XIII",
+        "desc": "Bagi Rumi dan Hafez, mawar adalah kekasih — keindahan bukan hiasan melainkan undangan untuk hadir lebih utuh. ARETON mengkurasi companion yang menghargai kecerdasan, percakapan, dan kehadiran yang tenang sebagai bagian tak terpisahkan dari keindahan."
+      },
+      "kepuasan": {
+        "title": "Kepuasan",
+        "century": "Renaisans, abad XVI",
+        "desc": "Sebuah mawar tetaplah mawar, kata Shakespeare, apa pun namanya. Yang penting adalah esensinya. ARETON mengukur keberhasilan dari kepantasan pengalaman — bukan dari label, melainkan dari rasa yang tertinggal ketika malam selesai."
+      }
+    },
+
+    "servicesMark": "Babak III · Repertoar",
+    "servicesTitle": "Dipanggung untuk setiap tempo",
+    "servicesLead": "Setiap pertemuan punya kecepatannya sendiri. Kami memilihkan companion yang sesuai dengan tempo dan konteksnya — formal, informal, strategis, seremonial.",
     "services": {
-      "meeting": { "title": "Pendamping Meeting", "desc": "Companion profesional untuk meeting bisnis, presentasi, dan negosiasi" },
-      "dinner": { "title": "Pendamping Dinner", "desc": "Partner elegan untuk acara makan malam formal atau kasual" },
-      "event": { "title": "Pendamping Event", "desc": "Plus-one berkelas untuk gala, wedding, atau networking event" },
-      "business": { "title": "Asisten Bisnis", "desc": "Sekretaris profesional untuk perjalanan bisnis domestik/internasional" }
+      "meeting": { "title": "Pendamping Meeting", "desc": "Companion profesional untuk meeting bisnis, presentasi, dan negosiasi tingkat tinggi." },
+      "dinner": { "title": "Pendamping Dinner", "desc": "Partner yang elegan, cerdas, dan fasih etiket untuk dinner formal maupun intim." },
+      "event": { "title": "Pendamping Event", "desc": "Plus-one berkelas untuk gala, wedding, dan networking event yang penting untuk reputasi Anda." },
+      "business": { "title": "Asisten Bisnis", "desc": "Sekretaris profesional untuk perjalanan bisnis domestik dan internasional." }
     },
-    "tierTitle": "Klasifikasi Partner",
+
+    "tierMark": "Babak IV · Varietas Mawar",
+    "tierTitle": "Setiap tingkatan, sebuah varietas",
+    "tierLead": "Seperti tradisi floriografi Victoria — di mana setiap varietas mawar menyampaikan makna yang berbeda — ARETON menandai setiap klasifikasi partner dengan varietas mawar yang paling mewakili karakternya.",
     "tiers": {
-      "silver": { "services": "Pendamping makan, acara kasual", "rate": "Rp 300K - 500K / jam" },
-      "gold": { "services": "Meeting bisnis, dinner formal, pesta", "rate": "Rp 500K - 1Jt / jam" },
-      "platinum": { "services": "Asisten bisnis, negosiasi, sekretaris perjalanan", "rate": "Rp 1Jt - 2.5Jt / jam" },
-      "diamond": { "services": "VIP escort, diplomat/CEO companion, international trip", "rate": "Rp 2.5Jt - 5Jt+ / jam" }
+      "silver": {
+        "variety": "Tea Rose",
+        "meaning": "Kehangatan yang terkurasi",
+        "services": "Pendamping makan, acara kasual berkelas.",
+        "rate": "Rp 300K – 500K / jam"
+      },
+      "gold": {
+        "variety": "Damask",
+        "meaning": "Keindahan yang dewasa",
+        "services": "Meeting bisnis, dinner formal, gala.",
+        "rate": "Rp 500K – 1Jt / jam"
+      },
+      "platinum": {
+        "variety": "Gallica",
+        "meaning": "Kedalaman dan intelijensia",
+        "services": "Asisten bisnis, negosiasi, sekretaris perjalanan.",
+        "rate": "Rp 1Jt – 2.5Jt / jam"
+      },
+      "diamond": {
+        "variety": "Rose Noir",
+        "meaning": "Kehadiran yang langka",
+        "services": "VIP escort, diplomat / C-suite companion, perjalanan internasional.",
+        "rate": "Rp 2.5Jt – 5Jt+ / jam"
+      }
     },
-    "trustTitle": "Keunggulan",
-    "trust": {
-      "verification": { "title": "Verifikasi Ketat", "desc": "eKYC, background check, interview, training wajib" },
-      "matching": { "title": "AI Smart Matching", "desc": "Pencocokan berdasar kebutuhan, preferensi, dan kompatibilitas" },
-      "escrow": { "title": "Escrow Payment", "desc": "Dana aman di escrow, release setelah layanan selesai" },
-      "safety": { "title": "SOS & Safety", "desc": "Tombol darurat, live tracking, 24/7 support team" },
-      "rating": { "title": "Rating Terperinci", "desc": "Skor attitude, ketepatan waktu, profesionalisme" },
-      "multilang": { "title": "Multi-bahasa", "desc": "Interface & partner tersedia dalam berbagai bahasa" }
+
+    "thornsMark": "Babak V · Duri & Kelopak",
+    "thornsTitle": "Seni mengkurasi mawar",
+    "thornsLead": "Le Roman de la Rose dari abad ke-13 mengajarkan bahwa mawar harus dicapai lewat perjalanan — bukan dijumput dari semak. Begitu pula cara kami memilih partner.",
+    "thorns": {
+      "petal1": {
+        "title": "Verifikasi Identitas",
+        "desc": "eKYC resmi, pemeriksaan latar belakang, dan wawancara personal sebelum partner diterima."
+      },
+      "petal2": {
+        "title": "Portofolio Terkurasi",
+        "desc": "Setiap profil ditinjau redaksi untuk bahasa, etiket, dan relevansi profesional."
+      },
+      "petal3": {
+        "title": "Pengawasan Berkelanjutan",
+        "desc": "Rating mendetail, audit log, dan review setiap booking menjaga standar tetap tinggi."
+      },
+      "petal4": {
+        "title": "Safety Net 24/7",
+        "desc": "Tombol SOS, live tracking, tim dukungan, dan escrow untuk setiap Rupiah yang Anda percayakan."
+      }
     },
+
+    "invitationMark": "Babak VI · Undangan",
+    "invitationTitle": "Mekar pada waktu yang Anda pilih",
+    "invitationLead": "Ketika Anda siap untuk sebuah pertemuan yang pantas diingat, mawar sudah menunggu.",
+    "ctaBrowse": "Telusuri Companion",
+    "ctaCreate": "Buat Akun",
+
     "copyright": "ARETON.id — Professional Companion Service Platform"
   },
   "auth": {
