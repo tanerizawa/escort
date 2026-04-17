@@ -39,13 +39,18 @@ export class PaymentService {
   }
 
   private isPaymentMockEnabled(): boolean {
-    // UAT safety: real gateway is disabled by default unless explicitly set to REAL.
+    // Explicit opt-in via PAYMENT_MODE wins when set (used by UAT harness).
     const paymentMode = this.configService.get<string>('PAYMENT_MODE');
     if (paymentMode) {
       return paymentMode.toUpperCase() !== 'REAL';
     }
 
-    return true;
+    // Fall back to the documented ENABLE_PAYMENT_MOCK flag so local dev can
+    // flip mocks on/off without redeploying. Defaults to OFF so production
+    // does not silently short-circuit real gateways.
+    const raw = this.configService.get<string>('ENABLE_PAYMENT_MOCK');
+    if (!raw) return false;
+    return !['0', 'false', 'no', 'off'].includes(raw.trim().toLowerCase());
   }
 
   async create(userId: string, dto: CreatePaymentDto) {
