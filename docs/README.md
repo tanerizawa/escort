@@ -2,6 +2,7 @@
 
 | Doc | Purpose |
 |-----|---------|
+| [CHECKLIST.md](./CHECKLIST.md) | Implementation progress vs the documented plan. |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | High-level system diagram and request lifecycle. |
 | [GETTING_STARTED.md](./GETTING_STARTED.md) | Local dev setup (API, web, admin, mobile). |
 | [MVP_MAP.md](./MVP_MAP.md) | MVP / split / partial mapping for phased rollout. |
