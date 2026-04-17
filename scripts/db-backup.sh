@@ -1,6 +1,6 @@
 #!/bin/bash
 # ARETON.id — Database Backup Script
-# Run daily via cron: 0 2 * * * /home/escort/prestige-id/scripts/db-backup.sh >> /var/log/areton-backup.log 2>&1
+# Run daily via cron: 0 2 * * * /srv/areton-id/scripts/db-backup.sh >> /var/log/areton-backup.log 2>&1
 
 set -e
 
