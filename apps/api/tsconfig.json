@@ -10,8 +10,6 @@
     "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "baseUrl": ".",
-    "ignoreDeprecations": "5.0",
     "types": ["node", "jest", "multer"],
     "incremental": true,
     "skipLibCheck": true,
@@ -23,10 +21,10 @@
     "strict": true,
     "strictPropertyInitialization": false,
     "paths": {
-      "@/*": ["src/*"],
-      "@modules/*": ["src/modules/*"],
-      "@common/*": ["src/common/*"],
-      "@config/*": ["src/config/*"]
+      "@/*": ["./src/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@common/*": ["./src/common/*"],
+      "@config/*": ["./src/config/*"]
     },
     "resolveJsonModule": true,
     "esModuleInterop": true
