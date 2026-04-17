@@ -139,7 +139,9 @@ export class ChatService {
       throw new ForbiddenException('Chat hanya tersedia untuk booking yang aktif');
     }
 
-    // TODO: Encrypt message content before storing
+    // Messages are stored AES-256-GCM encrypted via EncryptionService.
+    // Read paths (getMessages / listRooms) decrypt with decryptSafe so that
+    // pre-encryption rows (from earlier schema revisions) keep rendering.
     const encryptedContent = this.encryption.encrypt(dto.content);
 
     const message = await this.prisma.chatMessage.create({

@@ -8,6 +8,7 @@ import { RedisService } from '@/config/redis.service';
 import { AuditService } from '@/common/services/audit.service';
 import { EmailService } from '@modules/notification/email.service';
 import { NotificationService } from '@modules/notification/notification.service';
+import { WhatsAppService } from '@modules/notification/whatsapp.service';
 import { AppleAuthService } from './services/apple-auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -26,6 +27,7 @@ export class AuthService {
     private readonly audit: AuditService,
     private readonly emailService: EmailService,
     private readonly notificationService: NotificationService,
+    private readonly whatsappService: WhatsAppService,
     private readonly appleAuth: AppleAuthService,
   ) {}
 
@@ -244,7 +246,8 @@ export class AuthService {
       60 * 60, // 1 hour
     );
 
-    // TODO: Send email via SendGrid/Nodemailer
+    // Email delivery is handled by EmailService (Brevo). Falls back to MOCK
+    // mode (logging only) when BREVO_API_KEY is not configured.
     const frontendUrl = this.config.get('app.webUrl') || 'https://areton.id';
     const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
     this.emailService.sendPasswordReset(user.email, {
@@ -760,11 +763,15 @@ export class AuthService {
     // Increment rate limit counter
     await this.redis.set(otpCountKey, String((parseInt(currentCount || '0') + 1)), 3600);
 
-    // TODO: Send via Twilio/SMS provider when credentials available
+    // Deliver via Twilio WhatsApp when credentials are configured; falls back
+    // to a MOCK-mode log when they're missing (handled inside WhatsAppService).
     const isDev = this.config.get('app.nodeEnv') === 'development';
+    this.whatsappService.sendOTP(phone, otp).catch((err) => {
+      this.logger.error(`Failed to send OTP WhatsApp to ${phone}: ${err?.message}`);
+    });
 
     if (isDev) {
-      console.log(`[OTP] Phone: ${phone}, Code: ${otp}`);
+      this.logger.log(`[OTP] Phone: ${phone}, Code: ${otp}`);
     }
 
     return {
