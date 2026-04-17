@@ -11,7 +11,6 @@ import { MapPin } from 'lucide-react';
 
 // Fix default marker icons for Leaflet in Next.js
 const fixIcon = () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   delete (L.Icon.Default.prototype as any)._getIconUrl;
   L.Icon.Default.mergeOptions({
     iconRetinaUrl: markerIcon2x.src,
