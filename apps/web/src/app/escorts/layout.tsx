@@ -16,9 +16,16 @@ export const metadata: Metadata = {
 
 export default function EscortsPublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-dark-900 text-dark-100">
+    <div className="relative min-h-screen bg-dark-900 text-dark-100">
+      <div
+        className="pointer-events-none fixed inset-0 -z-0 opacity-70"
+        style={{
+          background:
+            'radial-gradient(ellipse at 20% -10%, rgba(176,74,85,0.08), transparent 55%), radial-gradient(ellipse at 110% 40%, rgba(201,169,110,0.06), transparent 55%)',
+        }}
+      />
       <Navbar />
-      <main className="pt-20 page-enter">{children}</main>
+      <main className="relative z-10 pt-20 page-enter">{children}</main>
       <Footer />
     </div>
   );
