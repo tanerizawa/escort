@@ -172,6 +172,52 @@
     @apply absolute rounded-full blur-3xl pointer-events-none;
     background: radial-gradient(circle, rgba(201,169,110,0.08), transparent 70%);
   }
+
+  /* ── Rose / claret decorative tokens ──────────────────────────────────── */
+
+  /* Gold foil that shifts toward rose — used under the hero monogram. */
+  .text-gradient-rose-gold {
+    background: linear-gradient(135deg, #e9bd82 0%, #c9a96e 45%, #b04a55 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* A thin hairline tapering from gold into rose. */
+  .gold-rose-line {
+    height: 1px;
+    background-image: linear-gradient(
+      90deg,
+      rgba(201, 169, 110, 0) 0%,
+      rgba(201, 169, 110, 0.55) 40%,
+      rgba(176, 74, 85, 0.55) 80%,
+      rgba(176, 74, 85, 0) 100%
+    );
+  }
+
+  /* Deep velvet stage — a vignette evoking oxblood drapery. */
+  .velvet-stage {
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(77, 42, 48, 0.35) 0%, rgba(11, 17, 32, 0) 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(140, 47, 58, 0.18) 0%, rgba(11, 17, 32, 0) 55%),
+      #0b1120;
+  }
+
+  /* Editorial serial number — used on section headers. */
+  .act-mark {
+    @apply font-display text-[11px] uppercase tracking-widest-3 text-brand-400;
+  }
+
+  /* Rose monogram wrapper — renders the SVG inside a gold/rose gradient. */
+  .rose-monogram {
+    color: #c9a96e;
+    filter: drop-shadow(0 1px 0 rgba(176, 74, 85, 0.2));
+  }
+
+  /* A pair of watermark roses placed off-axis on wide sections. */
+  .rose-watermark {
+    @apply pointer-events-none absolute opacity-[0.045] text-brand-400;
+  }
 }
 
 @layer utilities {

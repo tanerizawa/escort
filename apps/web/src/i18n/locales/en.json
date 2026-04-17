@@ -65,34 +65,108 @@
   },
   "landing": {
     "tagline": "Professional Companion Service",
-    "heroTitle": "Professional Companion",
-    "heroHighlight": "Classy & Verified",
-    "heroDesc": "Premium platform connecting you with verified professional companions for business meetings, formal dinners, events, and other professional needs.",
-    "ctaStart": "Get Started",
+    "prologueMark": "Prologue",
+    "heroEyebrow": "A professional companion platform for executives, founders, and discerning travellers.",
+    "heroTitle": "Beauty tempered",
+    "heroHighlight": "by precision",
+    "heroDesc": "A rose blooms perfectly not because it is gentle with everything — but because it knows when to bear a thorn. ARETON is a house for professional companions who understand the grammar of standing, grace, and curated fulfilment.",
+    "ctaStart": "Begin the Journey",
     "ctaPartner": "Join as Partner",
-    "servicesTitle": "Our Services",
+
+    "subRosaMark": "Act I · Sub Rosa",
+    "subRosaTitle": "Beneath the rose, a pact",
+    "subRosaBody": "In Roman halls, a rose suspended from the ceiling signalled that everything said below it was to be kept in confidence. ARETON carries that discipline forward: every meeting is shielded in privacy, every identity verified, every transaction sealed in escrow before the evening begins.",
+    "subRosaQuote": "\u201cQuicquid sub rosa dictum — whatever is said beneath the rose, there it remains.\u201d",
+
+    "essencesMark": "Act II · Three Essences",
+    "essencesTitle": "Standing. Beauty. Fulfilment.",
+    "essencesLead": "ARETON does not chase surfaces. It honours the three essences that have clung to the rose across the centuries — and to every encounter worth remembering.",
+    "essences": {
+      "kemapanan": {
+        "title": "Standing",
+        "century": "Rome, 1st century",
+        "desc": "The rose was never a wildflower; it belonged to palaces and to Venus herself. ARETON is built for professionals who understand that the highest standard is not negotiable — strict verification, curated portfolios, and a 24/7 support cadre form the floor, not the ceiling."
+      },
+      "keindahan": {
+        "title": "Beauty",
+        "century": "Persian ghazal, 13th century",
+        "desc": "For Rumi and Hafez, the rose was the beloved — beauty is not an ornament but an invitation to be more fully present. ARETON chooses companions who treat intellect, conversation, and quiet presence as inseparable from beauty."
+      },
+      "kepuasan": {
+        "title": "Fulfilment",
+        "century": "Renaissance, 16th century",
+        "desc": "A rose is still a rose, Shakespeare wrote, by any other name. What matters is its essence. ARETON measures success by the worthiness of the experience — not by labels, but by the afterglow left when the night has ended."
+      }
+    },
+
+    "servicesMark": "Act III · Repertoire",
+    "servicesTitle": "Staged for every tempo",
+    "servicesLead": "Every engagement has its own tempo. We cast companions who match the cadence and context — formal, informal, strategic, ceremonial.",
     "services": {
-      "meeting": { "title": "Meeting Companion", "desc": "Professional companion for business meetings, presentations, and negotiations" },
-      "dinner": { "title": "Dinner Companion", "desc": "Elegant partner for formal or casual dinner occasions" },
-      "event": { "title": "Event Companion", "desc": "Classy plus-one for galas, weddings, or networking events" },
-      "business": { "title": "Business Assistant", "desc": "Professional secretary for domestic/international business trips" }
+      "meeting": { "title": "Meeting Companion", "desc": "Professional companion for business meetings, presentations, and senior negotiations." },
+      "dinner": { "title": "Dinner Companion", "desc": "Elegant, literate, etiquette-fluent partner for formal and intimate dinners." },
+      "event": { "title": "Event Companion", "desc": "A composed plus-one for galas, weddings, and reputational networking events." },
+      "business": { "title": "Business Assistant", "desc": "Professional secretary for domestic and international business travel." }
     },
-    "tierTitle": "Partner Classification",
+
+    "tierMark": "Act IV · Rose Varieties",
+    "tierTitle": "Each tier, a varietal",
+    "tierLead": "In the Victorian language of flowers, each rose varietal carried its own meaning. ARETON marks every partner classification with the rose it resembles most.",
     "tiers": {
-      "silver": { "services": "Casual dining, casual events", "rate": "IDR 300K - 500K / hr" },
-      "gold": { "services": "Business meetings, formal dinner, parties", "rate": "IDR 500K - 1M / hr" },
-      "platinum": { "services": "Business assistant, negotiation, travel secretary", "rate": "IDR 1M - 2.5M / hr" },
-      "diamond": { "services": "VIP escort, diplomat/CEO companion, international trip", "rate": "IDR 2.5M - 5M+ / hr" }
+      "silver": {
+        "variety": "Tea Rose",
+        "meaning": "A curated warmth",
+        "services": "Casual dining and poised social occasions.",
+        "rate": "IDR 300K – 500K / hr"
+      },
+      "gold": {
+        "variety": "Damask",
+        "meaning": "Mature beauty",
+        "services": "Business meetings, formal dinners, galas.",
+        "rate": "IDR 500K – 1M / hr"
+      },
+      "platinum": {
+        "variety": "Gallica",
+        "meaning": "Depth and intelligence",
+        "services": "Business assistant, negotiation, travel secretariat.",
+        "rate": "IDR 1M – 2.5M / hr"
+      },
+      "diamond": {
+        "variety": "Rose Noir",
+        "meaning": "Rare presence",
+        "services": "VIP escort, diplomat / C-suite companion, international travel.",
+        "rate": "IDR 2.5M – 5M+ / hr"
+      }
     },
-    "trustTitle": "Our Advantages",
-    "trust": {
-      "verification": { "title": "Strict Verification", "desc": "eKYC, background check, interview, mandatory training" },
-      "matching": { "title": "AI Smart Matching", "desc": "Matching based on needs, preferences, and compatibility" },
-      "escrow": { "title": "Escrow Payment", "desc": "Funds secured in escrow, released after service completion" },
-      "safety": { "title": "SOS & Safety", "desc": "Emergency button, live tracking, 24/7 support team" },
-      "rating": { "title": "Detailed Rating", "desc": "Attitude, punctuality, and professionalism scores" },
-      "multilang": { "title": "Multi-language", "desc": "Interface & partners available in multiple languages" }
+
+    "thornsMark": "Act V · Thorns & Petals",
+    "thornsTitle": "The craft of curating a rose",
+    "thornsLead": "The 13th-century Roman de la Rose taught that the rose must be earned through a journey — not plucked from the hedge. Our curation works the same way.",
+    "thorns": {
+      "petal1": {
+        "title": "Identity Verification",
+        "desc": "Formal eKYC, background checks, and personal interviews before any partner is welcomed."
+      },
+      "petal2": {
+        "title": "Curated Portfolio",
+        "desc": "Every profile is reviewed by our editors for language, etiquette, and professional relevance."
+      },
+      "petal3": {
+        "title": "Continuous Stewardship",
+        "desc": "Granular ratings, audit logs, and per-booking reviews keep the standard resolutely high."
+      },
+      "petal4": {
+        "title": "24/7 Safety Net",
+        "desc": "SOS button, live tracking, a support cadre, and escrow for every rupiah you entrust."
+      }
     },
+
+    "invitationMark": "Act VI · Invitation",
+    "invitationTitle": "Blossom when you choose",
+    "invitationLead": "When you are ready for a meeting worth remembering, the rose is already waiting.",
+    "ctaBrowse": "Browse Companions",
+    "ctaCreate": "Create Account",
+
     "copyright": "ARETON.id — Professional Companion Service Platform"
   },
   "auth": {

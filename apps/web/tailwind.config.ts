@@ -37,6 +37,32 @@ const config: Config = {
           emerald: '#34d399',
           rose: '#fb7185',
         },
+        // Rose / velvet / claret palette — inspired by Victorian oxblood,
+        // Renaissance damask roses and Art Deco rose-gold leaf.
+        rose: {
+          50: '#fbeef0',
+          100: '#f6d7da',
+          200: '#e8a9af',
+          300: '#d47b84',
+          400: '#b04a55',
+          500: '#8c2f3a',
+          600: '#6f2330',
+          700: '#551b26',
+          800: '#3d151c',
+          900: '#2a0f15',
+        },
+        velvet: {
+          50: '#f5eeee',
+          100: '#ead6d7',
+          200: '#c7a0a3',
+          300: '#9e6b71',
+          400: '#6f3f46',
+          500: '#4d2a30',
+          600: '#3a1e23',
+          700: '#2c1619',
+          800: '#1d0d10',
+          900: '#110608',
+        },
       },
       fontFamily: {
         sans: ['var(--font-inter)', 'system-ui', '-apple-system', 'sans-serif'],
@@ -71,6 +97,8 @@ const config: Config = {
         'shimmer': 'shimmerSweep 3s ease-in-out infinite',
         'float': 'gentleFloat 8s ease-in-out infinite',
         'glow-pulse': 'glowPulse 4s ease-in-out infinite',
+        'rose-bloom': 'roseBloom 1200ms ease-out both',
+        'petal-drift': 'petalDrift 14s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -119,12 +147,30 @@ const config: Config = {
           '0%, 100%': { opacity: '0.4' },
           '50%': { opacity: '0.8' },
         },
+        roseBloom: {
+          '0%': { opacity: '0', transform: 'scale(0.85) rotate(-4deg)' },
+          '60%': { opacity: '1', transform: 'scale(1.03) rotate(1deg)' },
+          '100%': { opacity: '1', transform: 'scale(1) rotate(0deg)' },
+        },
+        petalDrift: {
+          '0%, 100%': { transform: 'translate3d(0, 0, 0) rotate(0deg)', opacity: '0.55' },
+          '50%': { transform: 'translate3d(8px, -6px, 0) rotate(2deg)', opacity: '0.9' },
+        },
       },
       backgroundImage: {
         'gold-gradient': 'linear-gradient(135deg, #e9bd82 0%, #c9a96e 50%, #b8924f 100%)',
         'gold-gradient-subtle': 'linear-gradient(135deg, rgba(201,169,110,0.08) 0%, rgba(201,169,110,0.02) 100%)',
         'dark-gradient': 'linear-gradient(180deg, #0b1120 0%, #0f172a 50%, #0b1120 100%)',
         'editorial-gradient': 'linear-gradient(180deg, transparent 0%, #0b1120 100%)',
+        // Rose-gold foil — for monogram accents and hairlines.
+        'rose-gold': 'linear-gradient(135deg, #e9bd82 0%, #c9a96e 40%, #b04a55 100%)',
+        'rose-gold-subtle':
+          'linear-gradient(135deg, rgba(201,169,110,0.12) 0%, rgba(176,74,85,0.08) 100%)',
+        // Deep velvet radial — vignette backdrop evoking oxblood drapery.
+        'velvet-radial':
+          'radial-gradient(ellipse at center, rgba(77,42,48,0.35) 0%, rgba(11,17,32,0) 65%)',
+        'claret-fade':
+          'linear-gradient(180deg, rgba(140,47,58,0) 0%, rgba(140,47,58,0.18) 50%, rgba(11,17,32,0) 100%)',
       },
     },
   },

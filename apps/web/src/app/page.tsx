@@ -4,85 +4,126 @@ import Link from 'next/link';
 import { useI18n } from '@/i18n';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
-import { Briefcase, Ticket, Users, UtensilsCrossed } from 'lucide-react';
-import { Icon } from '@/components/ui/icon';
+import { RoseGlyph } from '@/components/brand/rose-glyph';
 
+/**
+ * ARETON.id — homepage
+ *
+ * Designed as a six-act editorial piece built around the rose, ARETON's
+ * primary emblem. Each section draws on how the rose has been read across
+ * history — Roman sub rosa secrecy, Persian ghazal longing, medieval quest
+ * poetry, Shakespearean essence-over-label, Victorian floriography, and
+ * Art Deco rose-gold geometry. The platform is framed as three essences —
+ * Standing (Kemapanan), Beauty (Keindahan), and Fulfilment (Kepuasan) —
+ * threaded through all six acts.
+ */
 export default function HomePage() {
   const { t } = useI18n();
 
+  const essences = ['kemapanan', 'keindahan', 'kepuasan'] as const;
+
   const services = [
-    { icon: 'Users', key: 'meeting' },
-    { icon: 'UtensilsCrossed', key: 'dinner' },
-    { icon: 'Ticket', key: 'event' },
-    { icon: 'Briefcase', key: 'business' },
+    { key: 'meeting', numeral: 'I' },
+    { key: 'dinner', numeral: 'II' },
+    { key: 'event', numeral: 'III' },
+    { key: 'business', numeral: 'IV' },
   ] as const;
 
   const tiers = [
-    { name: 'Silver', color: 'text-slate-300', border: 'border-slate-400/20', bg: 'bg-slate-400/5', key: 'silver' },
-    { name: 'Gold', color: 'text-brand-400', border: 'border-brand-400/20', bg: 'bg-brand-400/5', key: 'gold' },
-    { name: 'Platinum', color: 'text-violet-300', border: 'border-violet-400/20', bg: 'bg-violet-400/5', key: 'platinum' },
-    { name: 'Diamond', color: 'text-sky-300', border: 'border-sky-400/20', bg: 'bg-sky-400/5', key: 'diamond' },
+    {
+      key: 'silver',
+      label: 'Silver',
+      accent: 'text-slate-300',
+      border: 'border-slate-400/20',
+      bg: 'bg-slate-400/[0.04]',
+    },
+    {
+      key: 'gold',
+      label: 'Gold',
+      accent: 'text-brand-400',
+      border: 'border-brand-400/25',
+      bg: 'bg-brand-400/[0.06]',
+    },
+    {
+      key: 'platinum',
+      label: 'Platinum',
+      accent: 'text-rose-200',
+      border: 'border-rose-300/25',
+      bg: 'bg-rose-400/[0.05]',
+    },
+    {
+      key: 'diamond',
+      label: 'Diamond',
+      accent: 'text-rose-300',
+      border: 'border-rose-400/30',
+      bg: 'bg-rose-500/[0.08]',
+    },
   ] as const;
 
-  const trustKeys = ['verification', 'matching', 'escrow', 'safety', 'rating', 'multilang'] as const;
-
-  const editorialImages = [
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&q=80&auto=format',
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80&auto=format',
-    'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&q=80&auto=format',
-    'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&q=80&auto=format',
-    'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=800&q=80&auto=format',
-    'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=800&q=80&auto=format',
-  ];
+  const thorns = ['petal1', 'petal2', 'petal3', 'petal4'] as const;
 
   return (
     <div className="min-h-screen bg-dark-900 text-dark-100">
-
-      {/* ───────── HEADER ───────── */}
       <Navbar />
 
-      {/* ───────── HERO — Full-bleed editorial ───────── */}
-      <section className="relative flex min-h-screen items-center justify-center overflow-hidden pt-20">
-        {/* Background mosaic */}
-        <div className="absolute inset-0 grid grid-cols-3 gap-0.5 opacity-[0.12]">
-          {editorialImages.map((src, i) => (
-            <div key={i} className="relative overflow-hidden">
-              <img
-                src={src}
-                alt=""
-                className="h-full w-full object-cover animate-ken-burns"
-                style={{ animationDelay: `${i * 3}s` }}
-              />
-            </div>
-          ))}
-        </div>
+      {/* ──────────────── HERO / PROLOGUE ──────────────── */}
+      <section
+        className="relative flex items-center justify-center overflow-hidden pt-24 pb-20"
+        style={{ minHeight: 'min(100vh, 960px)' }}
+      >
+        {/* Deep velvet stage backdrop */}
+        <div className="absolute inset-0 velvet-stage" />
 
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-dark-900/60 via-dark-900/80 to-dark-900" />
+        {/* Soft orbs of gold + claret light */}
+        <div className="art-orb h-[32rem] w-[32rem] -top-40 left-1/2 -translate-x-1/2" />
+        <div
+          className="art-orb h-[28rem] w-[28rem] bottom-0 -right-24"
+          style={{
+            background:
+              'radial-gradient(circle, rgba(176,74,85,0.18), transparent 70%)',
+          }}
+        />
 
-        {/* Content */}
-        <div className="relative z-10 mx-auto max-w-5xl px-6 text-center">
-          {/* Magazine tagline */}
-          <div className="mb-8 flex items-center justify-center gap-4">
-            <span className="h-px w-12 bg-brand-400/40" />
-            <p className="caption">{t('landing.tagline')}</p>
-            <span className="h-px w-12 bg-brand-400/40" />
+        {/* Watermark roses */}
+        <RoseGlyph className="rose-watermark h-[40rem] w-[40rem] -left-40 top-20 animate-petal-drift" />
+        <RoseGlyph
+          className="rose-watermark h-[32rem] w-[32rem] -right-32 bottom-10 animate-petal-drift"
+          style={{ animationDelay: '4s' }}
+        />
+
+        {/* Thin gold + rose frame */}
+        <div className="pointer-events-none absolute inset-x-6 top-24 bottom-10 border border-brand-400/15 lg:inset-x-14" />
+
+        <div className="relative z-10 mx-auto w-full max-w-5xl px-6 text-center">
+          {/* Prologue mark */}
+          <div className="mb-10 flex items-center justify-center gap-4">
+            <span className="gold-rose-line w-12" />
+            <p className="act-mark">{t('landing.prologueMark')}</p>
+            <span className="gold-rose-line w-12" />
           </div>
 
-          {/* Display heading */}
-          <h1 className="font-display text-5xl font-medium leading-[1.05] tracking-tight text-dark-100 sm:text-display-lg lg:text-display-xl">
-            {t('landing.heroTitle')}
-          </h1>
-          <p className="mx-auto mt-6 font-display text-2xl font-medium italic text-brand-400 sm:text-3xl">
-            {t('landing.heroHighlight')}
+          {/* Rose monogram */}
+          <div className="mb-8 flex justify-center">
+            <div className="rose-monogram text-gradient-rose-gold animate-rose-bloom">
+              <RoseGlyph className="h-16 w-16 sm:h-20 sm:w-20" strokeWidth={1.1} />
+            </div>
+          </div>
+
+          <p className="mx-auto mb-6 max-w-xl font-sans text-[12px] uppercase tracking-widest-3 text-dark-300">
+            {t('landing.heroEyebrow')}
           </p>
 
-          {/* Subtext */}
-          <p className="mx-auto mt-8 max-w-xl font-serif text-lg leading-relaxed text-dark-300 sm:text-xl">
+          <h1 className="font-display text-5xl font-medium leading-[1.02] tracking-tight text-dark-100 sm:text-display-lg lg:text-display-xl">
+            {t('landing.heroTitle')}{' '}
+            <span className="italic text-gradient-rose-gold">
+              {t('landing.heroHighlight')}
+            </span>
+          </h1>
+
+          <p className="mx-auto mt-8 max-w-2xl font-serif text-lg leading-relaxed text-dark-300 sm:text-xl">
             {t('landing.heroDesc')}
           </p>
 
-          {/* CTAs */}
           <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
             <Link
               href="/register"
@@ -92,244 +133,287 @@ export default function HomePage() {
             </Link>
             <Link
               href="/register?role=escort"
-              className="rounded-none border border-dark-500/30 px-10 py-4 text-[12px] font-medium uppercase tracking-widest-2 text-dark-200 transition-all hover:border-brand-400/40 hover:text-brand-400"
+              className="rounded-none border border-dark-500/30 px-10 py-4 text-[12px] font-medium uppercase tracking-widest-2 text-dark-200 transition-all hover:border-rose-400/40 hover:text-rose-200"
             >
               {t('landing.ctaPartner')}
             </Link>
           </div>
 
-          {/* Scroll indicator */}
           <div className="mt-20 flex flex-col items-center gap-2 animate-parallax-float">
-            <span className="text-[10px] uppercase tracking-widest-3 text-dark-500">Scroll</span>
-            <svg className="h-5 w-5 text-dark-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <span className="text-[10px] uppercase tracking-widest-3 text-dark-500">
+              Scroll
+            </span>
+            <svg
+              className="h-5 w-5 text-dark-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1}
+            >
               <path d="M19 14l-7 7m0 0l-7-7m7 7V3" />
             </svg>
           </div>
         </div>
       </section>
 
-      {/* ───────── EDITORIAL STRIP ───────── */}
-      <section id="editorial" className="relative overflow-hidden py-0">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-0.5">
-          {editorialImages.slice(0, 4).map((src, i) => (
-            <div key={i} className="group relative aspect-[3/4] overflow-hidden">
-              <img
-                src={src}
-                alt=""
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-dark-900/80 via-dark-900/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-6">
-                <div className="h-px w-8 bg-brand-400/50 mb-3" />
-                <p className="font-display text-lg font-medium text-white/90">
-                  {['Elegance', 'Confidence', 'Prestige', 'Distinction'][i]}
-                </p>
-                <p className="mt-1 text-[11px] uppercase tracking-widest text-white/50">
-                  {['Formal Events', 'Business Travel', 'Social Gala', 'Private Dining'][i]}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* ──────────────── ACT I · SUB ROSA ──────────────── */}
+      <section className="relative border-t border-dark-700/30 py-28 sm:py-36">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-50"
+          style={{ backgroundImage: 'var(--tw-gradient-stops), linear-gradient(180deg, rgba(140,47,58,0) 0%, rgba(140,47,58,0.08) 50%, rgba(11,17,32,0) 100%)' }}
+        />
+        <RoseGlyph className="rose-watermark h-[28rem] w-[28rem] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
 
-      {/* ───────── MANIFESTO ───────── */}
-      <section className="relative py-28 sm:py-36">
-        <div className="mx-auto max-w-4xl px-6 text-center">
-          <div className="gold-line mx-auto mb-16 max-w-xs" />
-          <p className="font-serif text-3xl font-light leading-relaxed text-dark-200 sm:text-4xl md:text-[2.75rem] md:leading-[1.4]">
-            &ldquo;Kami tidak hanya menghubungkan—kami <em className="text-brand-400 not-italic font-medium">mengkurasi pengalaman</em> yang
-            mengangkat setiap momen menjadi kenangan yang tak terlupakan.&rdquo;
+        <div className="relative mx-auto max-w-3xl px-6 text-center">
+          <p className="act-mark mb-6">{t('landing.subRosaMark')}</p>
+          <h2 className="font-display text-display-sm font-medium text-dark-100 sm:text-display-md">
+            {t('landing.subRosaTitle')}
+          </h2>
+          <div className="gold-rose-line mx-auto mt-8 w-24" />
+          <p className="mt-10 font-serif text-lg leading-relaxed text-dark-300 sm:text-xl">
+            {t('landing.subRosaBody')}
           </p>
-          <div className="gold-line mx-auto mt-16 max-w-xs" />
-          <p className="mt-8 text-[11px] uppercase tracking-widest-3 text-dark-500">The ARETON Philosophy</p>
+          <p className="pull-quote mx-auto mt-12 max-w-2xl text-center !border-l-0 !pl-0 font-serif italic text-rose-200/80">
+            {t('landing.subRosaQuote')}
+          </p>
         </div>
       </section>
 
-      {/* ───────── SERVICES — Magazine grid ───────── */}
-      <section id="services" className="border-t border-dark-700/30 py-24 sm:py-32">
+      {/* ──────────────── ACT II · THREE ESSENCES ──────────────── */}
+      <section className="relative border-t border-dark-700/30 bg-dark-950/40 py-28 sm:py-36">
         <div className="mx-auto max-w-7xl px-6 lg:px-10">
-          {/* Section header */}
-          <div className="mb-20 flex flex-col items-center text-center">
-            <p className="caption mb-4">{t('landing.servicesTitle')}</p>
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="act-mark mb-6">{t('landing.essencesMark')}</p>
             <h2 className="font-display text-display-sm font-medium text-dark-100 sm:text-display-md">
-              Tailored for Every Occasion
+              {t('landing.essencesTitle')}
             </h2>
-            <div className="gold-line mt-8 w-20" />
+            <div className="gold-rose-line mx-auto mt-8 w-24" />
+            <p className="mx-auto mt-8 max-w-2xl font-serif text-lg leading-relaxed text-dark-300">
+              {t('landing.essencesLead')}
+            </p>
           </div>
 
-          {/* Services grid — editorial magazine layout */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {services.map((service, i) => (
-              <div
-                key={i}
-                className="group relative rounded-2xl border border-dark-700/30 bg-dark-800/30 p-8 transition-all duration-500 hover:border-brand-400/20 hover:bg-dark-800/50"
+          <div className="mt-20 grid gap-8 md:grid-cols-3">
+            {essences.map((key, idx) => (
+              <article
+                key={key}
+                className="group relative overflow-hidden border border-dark-700/30 bg-dark-800/40 p-10 transition-all duration-500 hover:border-rose-400/25 hover:bg-dark-800/60"
               >
-                {/* Number */}
-                <span className="font-display text-6xl font-light text-brand-400/10 absolute top-4 right-6">
-                  0{i + 1}
+                <div className="absolute inset-0 bg-rose-gold-subtle opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+
+                <div className="relative">
+                  <div className="mb-8 flex items-start justify-between">
+                    <div className="text-rose-300/80">
+                      <RoseGlyph className="h-10 w-10" />
+                    </div>
+                    <span className="font-display text-5xl font-light text-brand-400/15">
+                      {['I', 'II', 'III'][idx]}
+                    </span>
+                  </div>
+
+                  <p className="act-mark mb-2 !text-rose-300/70">
+                    {t(`landing.essences.${key}.century`)}
+                  </p>
+                  <h3 className="font-display text-2xl font-medium text-dark-100">
+                    {t(`landing.essences.${key}.title`)}
+                  </h3>
+                  <div className="gold-rose-line mt-4 w-10" />
+                  <p className="mt-6 font-serif text-[15px] leading-relaxed text-dark-300">
+                    {t(`landing.essences.${key}.desc`)}
+                  </p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ──────────────── ACT III · REPERTOIRE (services) ──────────────── */}
+      <section className="relative border-t border-dark-700/30 py-28 sm:py-36">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="act-mark mb-6">{t('landing.servicesMark')}</p>
+            <h2 className="font-display text-display-sm font-medium text-dark-100 sm:text-display-md">
+              {t('landing.servicesTitle')}
+            </h2>
+            <div className="gold-rose-line mx-auto mt-8 w-24" />
+            <p className="mx-auto mt-8 max-w-2xl font-serif text-lg leading-relaxed text-dark-300">
+              {t('landing.servicesLead')}
+            </p>
+          </div>
+
+          <div className="mt-16 grid gap-0.5 md:grid-cols-2 lg:grid-cols-4">
+            {services.map((service) => (
+              <article
+                key={service.key}
+                className="group relative overflow-hidden border border-dark-700/25 bg-dark-800/30 p-8 transition-all duration-500 hover:border-brand-400/30 hover:bg-dark-800/60"
+              >
+                <span className="absolute right-5 top-4 font-display text-5xl font-light text-brand-400/10">
+                  {service.numeral}
                 </span>
-                <div className="mb-6"><Icon name={service.icon} className="h-10 w-10 text-brand-400" /></div>
-                <h3 className="font-display text-xl font-medium text-dark-100 mb-3">
+                <div className="text-brand-400/80">
+                  <RoseGlyph className="h-9 w-9" strokeWidth={1.1} />
+                </div>
+                <h3 className="mt-6 font-display text-xl font-medium text-dark-100">
                   {t(`landing.services.${service.key}.title`)}
                 </h3>
-                <p className="font-serif text-[15px] leading-relaxed text-dark-400">
+                <div className="gold-line-left mt-3 w-10" />
+                <p className="mt-4 font-serif text-[15px] leading-relaxed text-dark-400">
                   {t(`landing.services.${service.key}.desc`)}
                 </p>
-                <div className="gold-line-left mt-6 w-12 opacity-0 transition-all duration-500 group-hover:opacity-100 group-hover:w-20" />
-              </div>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ───────── EDITORIAL FEATURE — Split layout ───────── */}
-      <section className="relative overflow-hidden">
-        <div className="grid lg:grid-cols-2 min-h-[80vh]">
-          {/* Image */}
-          <div className="relative overflow-hidden">
-            <img
-              src={editorialImages[4]}
-              alt="ARETON Editorial"
-              className="h-full w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-dark-900 hidden lg:block" />
-            <div className="absolute inset-0 bg-gradient-to-t from-dark-900 to-transparent lg:hidden" />
+      {/* ──────────────── ACT IV · ROSE VARIETIES (tiers) ──────────────── */}
+      <section className="relative border-t border-dark-700/30 bg-dark-950/40 py-28 sm:py-36">
+        <RoseGlyph className="rose-watermark h-[24rem] w-[24rem] -right-24 top-20" />
+
+        <div className="relative mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="act-mark mb-6">{t('landing.tierMark')}</p>
+            <h2 className="font-display text-display-sm font-medium text-dark-100 sm:text-display-md">
+              {t('landing.tierTitle')}
+            </h2>
+            <div className="gold-rose-line mx-auto mt-8 w-24" />
+            <p className="mx-auto mt-8 max-w-2xl font-serif text-lg leading-relaxed text-dark-300">
+              {t('landing.tierLead')}
+            </p>
           </div>
 
-          {/* Content */}
-          <div className="flex items-center px-8 py-20 lg:px-16 lg:py-0">
-            <div className="max-w-lg">
-              <p className="caption mb-6">The ARETON Difference</p>
-              <h2 className="font-display text-display-sm font-medium text-dark-100 leading-tight">
-                Where Sophistication<br />
-                <span className="italic text-brand-400">Meets</span> Trust
-              </h2>
-              <div className="gold-line-left mt-8 w-16" />
-              <p className="mt-8 font-serif text-lg leading-relaxed text-dark-300">
-                Setiap companion melalui proses kurasi ketat: verifikasi identitas, 
-                wawancara personal, dan evaluasi berkelanjutan. Kami memastikan 
-                standar profesionalisme tertinggi dalam setiap interaksi.
-              </p>
-              <div className="mt-8 grid grid-cols-3 gap-6 border-t border-dark-700/30 pt-8">
-                <div>
-                  <p className="font-display text-3xl font-medium text-brand-400">100%</p>
-                  <p className="mt-1 text-[11px] uppercase tracking-widest text-dark-500">Verified</p>
-                </div>
-                <div>
-                  <p className="font-display text-3xl font-medium text-brand-400">24/7</p>
-                  <p className="mt-1 text-[11px] uppercase tracking-widest text-dark-500">Support</p>
-                </div>
-                <div>
-                  <p className="font-display text-3xl font-medium text-brand-400">Escrow</p>
-                  <p className="mt-1 text-[11px] uppercase tracking-widest text-dark-500">Payment</p>
-                </div>
-              </div>
-              <Link
-                href="/register"
-                className="mt-10 inline-block rounded-none border border-brand-400/40 px-8 py-3.5 text-[11px] font-semibold uppercase tracking-widest-2 text-brand-400 transition-all hover:bg-brand-400/10"
+          <div className="mt-16 grid gap-5 sm:grid-cols-2">
+            {tiers.map((tier) => (
+              <article
+                key={tier.key}
+                className={`group relative overflow-hidden border ${tier.border} ${tier.bg} p-10 transition-all duration-500 hover:border-rose-400/30`}
               >
-                Join Now
-              </Link>
+                <div className="flex items-start justify-between gap-6">
+                  <div>
+                    <p className="act-mark !text-rose-300/70">
+                      {t(`landing.tiers.${tier.key}.variety`)}
+                    </p>
+                    <h3
+                      className={`mt-3 font-display text-3xl font-medium ${tier.accent}`}
+                    >
+                      {tier.label}
+                    </h3>
+                    <p className="mt-2 font-serif text-base italic text-rose-200/70">
+                      — {t(`landing.tiers.${tier.key}.meaning`)}
+                    </p>
+                  </div>
+                  <div className="text-rose-300/50 transition-transform duration-500 group-hover:scale-110">
+                    <RoseGlyph className="h-12 w-12" />
+                  </div>
+                </div>
+
+                <div className="gold-rose-line mt-8 w-20" />
+                <p className="mt-6 font-serif text-[15px] leading-relaxed text-dark-300">
+                  {t(`landing.tiers.${tier.key}.services`)}
+                </p>
+                <p className="mt-4 font-display text-lg font-light text-dark-200">
+                  {t(`landing.tiers.${tier.key}.rate`)}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ──────────────── ACT V · THORNS & PETALS (curation / safety) ──────────────── */}
+      <section className="relative border-t border-dark-700/30 py-28 sm:py-36">
+        <div className="mx-auto max-w-6xl px-6 lg:px-10">
+          <div className="grid gap-16 lg:grid-cols-[2fr_3fr] lg:gap-20">
+            <div>
+              <p className="act-mark mb-6">{t('landing.thornsMark')}</p>
+              <h2 className="font-display text-display-sm font-medium text-dark-100 sm:text-display-md">
+                {t('landing.thornsTitle')}
+              </h2>
+              <div className="gold-rose-line mt-8 w-24" />
+              <p className="mt-8 font-serif text-lg leading-relaxed text-dark-300">
+                {t('landing.thornsLead')}
+              </p>
+
+              {/* Decorative rose */}
+              <div className="mt-12 text-brand-400/50">
+                <RoseGlyph className="h-24 w-24" strokeWidth={1} />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {thorns.map((key, i) => (
+                <article
+                  key={key}
+                  className="group relative border border-dark-700/30 bg-dark-800/30 p-7 transition-all duration-500 hover:border-rose-400/25 hover:bg-dark-800/60"
+                >
+                  <span className="font-display text-4xl font-light text-brand-400/15">
+                    0{i + 1}
+                  </span>
+                  <h3 className="mt-3 font-display text-lg font-medium text-dark-100">
+                    {t(`landing.thorns.${key}.title`)}
+                  </h3>
+                  <div className="gold-line-left mt-3 w-10 transition-all duration-500 group-hover:w-16" />
+                  <p className="mt-4 font-serif text-[14.5px] leading-relaxed text-dark-400">
+                    {t(`landing.thorns.${key}.desc`)}
+                  </p>
+                </article>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* ───────── TIERS ───────── */}
-      <section id="tiers" className="border-t border-dark-700/30 py-24 sm:py-32">
-        <div className="mx-auto max-w-5xl px-6">
-          <div className="mb-20 flex flex-col items-center text-center">
-            <p className="caption mb-4">{t('landing.tierTitle')}</p>
-            <h2 className="font-display text-display-sm font-medium text-dark-100 sm:text-display-md">
-              Membership Tiers
-            </h2>
-            <div className="gold-line mt-8 w-20" />
+      {/* ──────────────── ACT VI · INVITATION (final CTA) ──────────────── */}
+      <section className="relative overflow-hidden border-t border-dark-700/30 py-32">
+        <div className="absolute inset-0 velvet-stage opacity-80" />
+        <div
+          className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2"
+          style={{
+            backgroundImage:
+              'linear-gradient(90deg, transparent, rgba(201,169,110,0.3), rgba(176,74,85,0.35), rgba(201,169,110,0.3), transparent)',
+          }}
+        />
+        <RoseGlyph className="rose-watermark h-[36rem] w-[36rem] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+
+        <div className="relative z-10 mx-auto max-w-3xl px-6 text-center">
+          <div className="mb-8 flex justify-center text-rose-300/80">
+            <RoseGlyph className="h-16 w-16 animate-rose-bloom" />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {tiers.map((tier, i) => (
-              <div
-                key={i}
-                className={`group rounded-2xl border ${tier.border} ${tier.bg} p-8 transition-all duration-500 hover:border-brand-400/25`}
-              >
-                <div className="flex items-center gap-4 mb-4">
-                  <span className={`font-display text-2xl font-medium ${tier.color}`}>{tier.name}</span>
-                  <span className="h-px flex-1 bg-dark-700/30" />
-                  <span className="font-display text-lg font-light text-dark-300">
-                    {t(`landing.tiers.${tier.key}.rate`)}
-                  </span>
-                </div>
-                <p className="font-serif text-[15px] leading-relaxed text-dark-400">
-                  {t(`landing.tiers.${tier.key}.services`)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ───────── TRUST — Editorial cards ───────── */}
-      <section className="border-t border-dark-700/30 py-24 sm:py-32 bg-dark-950/50">
-        <div className="mx-auto max-w-6xl px-6 lg:px-10">
-          <div className="mb-20 flex flex-col items-center text-center">
-            <p className="caption mb-4">{t('landing.trustTitle')}</p>
-            <h2 className="font-display text-display-sm font-medium text-dark-100">
-              Built on Trust
-            </h2>
-            <div className="gold-line mt-8 w-20" />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {trustKeys.map((key, i) => (
-              <div key={i} className="group rounded-2xl border border-dark-700/20 bg-dark-800/30 p-8 transition-all duration-500 hover:border-brand-400/15 hover:bg-dark-800/40">
-                <span className="font-display text-5xl font-light text-brand-400/[0.08]">0{i + 1}</span>
-                <h3 className="mt-4 font-display text-lg font-medium text-dark-100">{t(`landing.trust.${key}.title`)}</h3>
-                <p className="mt-2 font-serif text-sm leading-relaxed text-dark-400">{t(`landing.trust.${key}.desc`)}</p>
-                <div className="gold-line-left mt-6 w-0 transition-all duration-500 group-hover:w-12" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ───────── CTA BANNER ───────── */}
-      <section className="relative overflow-hidden py-32">
-        <div className="absolute inset-0 opacity-[0.06]">
-          <img
-            src={editorialImages[5]}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-        </div>
-        <div className="absolute inset-0 bg-dark-900/90" />
-        <div className="relative z-10 mx-auto max-w-3xl text-center px-6">
-          <p className="caption mb-6">Ready to Begin?</p>
+          <p className="act-mark mb-6">{t('landing.invitationMark')}</p>
           <h2 className="font-display text-display-sm font-medium text-dark-100 sm:text-display-md">
-            Your Next Unforgettable<br />
-            <span className="italic text-brand-400">Experience</span> Awaits
+            {t('landing.invitationTitle')}
           </h2>
-          <p className="mx-auto mt-6 max-w-lg font-serif text-lg text-dark-300 leading-relaxed">
-            Bergabunglah dengan komunitas eksklusif ARETON dan temukan pengalaman pendampingan profesional kelas dunia.
+          <p className="mx-auto mt-8 max-w-xl font-serif text-lg leading-relaxed text-dark-300">
+            {t('landing.invitationLead')}
           </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
+
+          <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
             <Link
               href="/register"
               className="rounded-none bg-brand-400 px-10 py-4 text-[12px] font-bold uppercase tracking-widest-2 text-dark-900 transition-all hover:bg-brand-300"
             >
-              Create Account
+              {t('landing.ctaCreate')}
             </Link>
             <Link
               href="/escorts"
-              className="rounded-none border border-dark-500/30 px-10 py-4 text-[12px] font-medium uppercase tracking-widest-2 text-dark-200 transition-all hover:border-brand-400/40 hover:text-brand-400"
+              className="rounded-none border border-rose-400/40 px-10 py-4 text-[12px] font-medium uppercase tracking-widest-2 text-rose-200 transition-all hover:bg-rose-500/10"
             >
-              Browse Companions
+              {t('landing.ctaBrowse')}
             </Link>
+          </div>
+
+          <div className="mt-16 flex items-center justify-center gap-4">
+            <span className="gold-rose-line w-16" />
+            <span className="font-display text-sm italic text-rose-200/70">
+              sub rosa · sub fide
+            </span>
+            <span className="gold-rose-line w-16" />
           </div>
         </div>
       </section>
 
-      {/* ───────── FOOTER ───────── */}
       <Footer />
     </div>
   );
