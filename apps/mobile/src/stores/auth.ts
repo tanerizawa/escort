@@ -54,8 +54,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await SecureStore.setItemAsync('refreshToken', refreshToken).catch(() => {});
       set({ user, isAuthenticated: true });
       connectSocket();
-    } catch (err: any) {
-      throw err;
     } finally {
       set({ isLoading: false });
     }
