@@ -1,9 +1,0 @@
-                  id                  |              bookingId               |   amount   | platformFee | escortPayout | tipAmount | status  |    method     
---------------------------------------+--------------------------------------+------------+-------------+--------------+-----------+---------+---------------
- be186ad7-62dd-48a9-a49f-fb85590aa064 | 7213f267-f609-418f-8dbd-8e4fc10fc9f8 | 1500000.00 |   150000.00 |   1350000.00 |           | ESCROW  | PLATFORM
- abcc5cdf-54c8-44d7-bcae-0b37996ef471 | afb102f1-731a-424c-8ca4-e733629ea7fb |       0.00 |        0.00 |         0.00 |           | PENDING | bank_transfer
- 15766121-ee11-4935-a320-e763fe253dee | 799f98e2-949d-4a84-bfbf-ed932a700628 | 2000000.00 |   200000.00 |   1800000.00 |           | PENDING | bank_transfer
- 2d159b31-b880-4b42-8681-c62128ec5dbd | fe260d08-d0e7-49e4-926c-5cda9f73dcc4 | 2000000.00 |   200000.00 |   1800000.00 |           | PENDING | bank_transfer
- e5347ba6-fbae-4fe9-b7dd-fe9374b62ab3 | 1508af97-b7d0-48bb-a8da-194f1c3f1321 | 2000000.00 |   200000.00 |   1800000.00 |           | PENDING | bank_transfer
-(5 rows)
-
