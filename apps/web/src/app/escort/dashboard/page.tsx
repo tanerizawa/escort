@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { Calendar, Check, ClipboardList, DollarSign, Lightbulb, MapPin, MessageCircle, Star, User, X, Zap } from 'lucide-react';
+import { PanelHeader } from '@/components/layout/panel-header';
 
 interface EscortProfile {
   tier: string;
@@ -291,26 +292,13 @@ export default function EscortDashboard() {
 
   return (
     <div>
-      {/* Header — editorial style */}
-      <div className="relative mb-8 overflow-hidden">
-        <div className="absolute inset-0 art-deco-bg opacity-30" />
-        <div className="absolute top-0 right-0 w-40 h-40 art-orb opacity-15" />
-        
-        <div className="relative flex items-start justify-between">
-          <div>
-            <p className="text-[10px] font-medium uppercase tracking-widest-2 text-brand-400/60 mb-1">Dashboard Partner</p>
-            <h1 className="font-display text-2xl font-light text-dark-100">
-              Selamat datang, <span className="text-brand-400">{user?.firstName}</span>
-            </h1>
-            {profile && (
-              <p className="mt-1 text-sm text-dark-400">
-                <span className={`${tierColor[profile.tier] || 'text-dark-400'}`}>
-                  ✦ {tierLabel[profile.tier] || profile.tier}
-                </span>
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
+      <PanelHeader
+        mark="Portal Partner"
+        title={`Selamat datang, ${user?.firstName || 'Partner'}`}
+        highlight={profile ? (tierLabel[profile.tier] || profile.tier) : undefined}
+        description="Studio harian Anda — jadwal, tamu, dan earnings dalam satu atrium yang tenang."
+        actions={
+          <>
             {profile && !profile.isApproved && (
               <Badge variant="warning" size="sm">
                 Menunggu Verifikasi
@@ -321,10 +309,9 @@ export default function EscortDashboard() {
                 <Check className="h-4 w-4 inline-block" /> Terverifikasi
               </Badge>
             )}
-          </div>
-        </div>
-        <div className="mt-4 h-px bg-gradient-to-r from-brand-400/30 via-brand-400/10 to-transparent" />
-      </div>
+          </>
+        }
+      />
 
       {/* Urgent Alerts */}
       {pendingRequests.length > 0 && (

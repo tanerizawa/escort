@@ -10,6 +10,8 @@ import Link from 'next/link';
 import { WelcomeTour } from '@/components/onboarding/welcome-tour';
 import { Award, Calendar, Check, ClipboardList, Gem, Heart, MessageCircle, RefreshCw, Search, Sparkles, Star, Trophy, Unlock, User } from 'lucide-react';
 import { Icon } from '@/components/ui/icon';
+import { PanelHeader } from '@/components/layout/panel-header';
+import { useI18n } from '@/i18n';
 
 const statusConfig: Record<string, { label: string; variant: 'warning' | 'info' | 'brand' | 'success' | 'danger' }> = {
   PENDING: { label: 'Menunggu', variant: 'warning' },
@@ -54,6 +56,7 @@ interface BookingSummary {
 
 export default function ClientDashboard() {
   const { user } = useAuthStore();
+  const { t } = useI18n();
   const [stats, setStats] = useState({ total: 0, active: 0, reviews: 0, favorites: 0 });
   const [recentBookings, setRecentBookings] = useState<BookingSummary[]>([]);
   const [kycStatus, setKycStatus] = useState<string>('NONE');
@@ -157,46 +160,37 @@ export default function ClientDashboard() {
   return (
     <div>
       <WelcomeTour />
-      {/* Header with decorative elements */}
-      <div className="relative mb-8 overflow-hidden">
-        {/* Subtle background art */}
-        <div className="absolute inset-0 art-deco-bg opacity-30" />
-        <div className="absolute top-0 right-0 w-32 h-32 art-orb opacity-20" />
-        
-        <div className="relative flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-medium uppercase tracking-widest-2 text-brand-400/60 mb-1">Dashboard</p>
-            <h1 className="font-display text-2xl font-light text-dark-100">
-              Halo, <span className="text-brand-400">{user?.firstName || 'User'}</span>
-            </h1>
-            <p className="mt-1 text-sm text-dark-400">
-              Selamat datang di dashboard Anda
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+
+      <PanelHeader
+        mark={t('auth.portalClient')}
+        title={`Halo, ${user?.firstName || 'Tamu'}`}
+        highlight="selamat datang di atrium Anda"
+        description="Ruang untuk menjelajah companion, mengurus booking, dan mencatat setiap pertemuan."
+        actions={
+          <>
             <button
               onClick={loadDashboard}
               disabled={loading}
               aria-label="Refresh dashboard"
-              className="flex h-8 w-8 items-center justify-center border border-dark-700/20 bg-dark-800/30 text-dark-500 transition-all hover:border-brand-400/20 hover:text-brand-400 disabled:opacity-40"
+              className="flex h-9 w-9 items-center justify-center border border-dark-700/30 bg-dark-800/40 text-dark-400 transition-all hover:border-brand-400/30 hover:text-brand-400 disabled:opacity-40"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
             {!loading && user?.isVerified && (
-              <span className="border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-400">
-                <Check className="h-4 w-4 inline-block" /> Verified
+              <span className="inline-flex items-center gap-1.5 border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-[11px] uppercase tracking-widest-2 text-emerald-300">
+                <Check className="h-3.5 w-3.5" /> Verified
               </span>
             )}
             {!loading && (
-              <span className={`border px-3 py-1 text-xs font-medium ${currentTier.color}`}>
-                <Icon name={currentTier.icon} className="h-4 w-4 inline-block" /> {currentTier.name}
+              <span
+                className={`inline-flex items-center gap-1.5 border px-3 py-1.5 text-[11px] uppercase tracking-widest-2 ${currentTier.color}`}
+              >
+                <Icon name={currentTier.icon} className="h-3.5 w-3.5" /> {currentTier.name}
               </span>
             )}
-          </div>
-        </div>
-        {/* Gold line divider */}
-        <div className="mt-4 h-px bg-gradient-to-r from-brand-400/30 via-brand-400/10 to-transparent" />
-      </div>
+          </>
+        }
+      />
 
       {/* Verification Banner */}
       {!loading && !user?.isVerified && kycStatus !== 'PENDING' && kycStatus !== 'IN_REVIEW' && (
