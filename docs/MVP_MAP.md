@@ -44,20 +44,18 @@ Ship once MVP is stable and traffic justifies the extra surface.
 | `matching`    | Heuristic scoring; `/escorts` search is enough for MVP. |
 | `gdpr`        | Required in EU markets. Gate by region. |
 
-## 4. “Partial” modules — finish these before GA
+## 4. “Partial” modules — status
 
-Each of these has a `TODO` or missing wiring that must be closed before
-general availability:
-
-- `chat` — end-to-end or at-rest message encryption (`ChatService`).
-- `safety` — external escalation (SMS/PagerDuty) for SOS.
-- `auth` — plug a real email + SMS provider for password reset / OTP.
-- `notification` — confirm Brevo API keys and Firebase project wiring.
-- `payment` — webhook reconciliation for each active gateway.
-- mobile `MapScreen` — currently graceful-degrades when native maps are
-  unavailable; pin a working native build.
-- prisma seed — verified idempotent, but production seeds should be
-  replaced with admin-only scripts.
+| Area | Status |
+|------|--------|
+| `chat` message encryption | ✅ Implemented — AES-256-GCM at rest via `EncryptionService`, read path uses `decryptSafe` for pre-encryption rows. |
+| `safety` SOS admin escalation | ✅ Implemented — `NotificationService.notifyAdmins(..., { severity: 'CRITICAL' })` adds WhatsApp escalation via Twilio when configured; severity ≥4 incidents escalate too. |
+| `auth` email reset | ✅ Wired — `EmailService` (Brevo) delivers reset links; MOCK mode when `BREVO_API_KEY` missing. |
+| `auth` OTP delivery | ✅ Wired — `WhatsAppService.sendOTP` invoked from `AuthService.sendOTP`; MOCK mode when Twilio unconfigured. |
+| `notification` provider preflight | ✅ Implemented — startup warns when Brevo / Firebase / Twilio keys are missing. |
+| `payment` webhook reconciliation | 🟡 Each gateway has a webhook endpoint; confirm signature verification is on before enabling live credentials. |
+| mobile `MapScreen` | 🟡 Graceful degradation in place; pin a native build before GA. |
+| Prisma seed | ✅ Single idempotent `prisma/seed.ts`; production seeds are separate admin-only scripts. |
 
 ## 5. Suggested rollout order
 
@@ -68,21 +66,32 @@ general availability:
 3. **Public launch:** referral, premium, training, corporate, article,
    testimonial, analytics (platform dashboards).
 
-## 6. Feature flag recommendations
+## 6. Feature flags (implemented)
 
-Because NestJS `DynamicModule`s are trivial, optional modules should be
-gated by env flags such as:
+Phase 2+ modules are now gated at the `AppModule` level. Every flag
+defaults to `true` so existing deployments keep their current behaviour.
+Set the env var to `false` / `0` / `no` / `off` to unload the module
+(routes disappear from the API entirely).
+
+| Env var                 | Module            |
+|-------------------------|-------------------|
+| `ENABLE_MATCHING`       | `MatchingModule`       |
+| `ENABLE_CORPORATE`      | `CorporateModule`      |
+| `ENABLE_TRAINING`       | `TrainingModule`       |
+| `ENABLE_PREMIUM`        | `PremiumModule`        |
+| `ENABLE_REFERRAL`       | `ReferralModule`       |
+| `ENABLE_ARTICLES`       | `ArticleModule`        |
+| `ENABLE_TESTIMONIALS`   | `TestimonialModule`    |
+| `ENABLE_GDPR`           | `GdprModule`           |
+| `ENABLE_ANALYTICS`      | `AnalyticsModule`      |
+
+Effective flags are logged at startup:
 
 ```
-ENABLE_CORPORATE=false
-ENABLE_TRAINING=false
-ENABLE_PREMIUM=false
-ENABLE_REFERRAL=false
-ENABLE_ARTICLES=false
-ENABLE_TESTIMONIALS=false
-ENABLE_MATCHING=false
+[Bootstrap] Feature flags — enabled: [matching, corporate, ...]
+[Bootstrap] Feature flags — disabled: [testimonials, articles]
 ```
 
-Add the flags in `ConfigModule`'s Joi schema and conditionally register
-each module in `AppModule`. This keeps the codebase monolithic but the
-runtime surface minimal for smaller markets.
+Implementation lives in `apps/api/src/app.module.ts` (module gating)
+and `apps/api/src/config/features.config.ts` (typed ConfigService
+accessor via `configService.get<Record<string, boolean>>('features')`).

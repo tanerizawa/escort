@@ -74,7 +74,23 @@ payment service no-ops on missing credentials.
 
 | Variable          | Consumer | Notes |
 |-------------------|----------|-------|
-| `ENCRYPTION_KEY`  | API      | ≥16 chars in dev, ≥32 chars in production. Used for AES-256-GCM PII encryption. **No default** — startup fails if missing. |
+| `ENCRYPTION_KEY`  | API      | ≥16 chars in dev, ≥32 chars in production. Used for AES-256-GCM PII + chat encryption. **No default** — startup fails if missing. |
+
+## 8. Feature flags (Phase 2+)
+
+All default to `true`. Set to `false`/`0`/`no`/`off` to unload the module at startup.
+
+| Variable | Module disabled when false |
+|----------|----------------------------|
+| `ENABLE_MATCHING` | `MatchingModule` |
+| `ENABLE_CORPORATE` | `CorporateModule` |
+| `ENABLE_TRAINING` | `TrainingModule` |
+| `ENABLE_PREMIUM` | `PremiumModule` |
+| `ENABLE_REFERRAL` | `ReferralModule` |
+| `ENABLE_ARTICLES` | `ArticleModule` |
+| `ENABLE_TESTIMONIALS` | `TestimonialModule` |
+| `ENABLE_GDPR` | `GdprModule` |
+| `ENABLE_ANALYTICS` | `AnalyticsModule` |
 
 ## 8. Environment lifecycle
 

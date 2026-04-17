@@ -74,10 +74,24 @@ Severity levels: `INFO` | `WARN` | `CRITICAL`.
 2. `SafetyService.triggerSOS`:
    - Creates an `IncidentReport` with severity 5.
    - If GPS provided, caches it in Redis via `pingUserLocation`.
-   - Writes a `CRITICAL` audit log entry.
-   - Fires admin notification (`NotificationService.notifyAdmins`).
-3. **TODO (pre-launch):** wire SMS/PagerDuty/phone escalation in the
-   Notification module for `SAFETY` severity.
+   - Writes a `CRITICAL` audit log entry (with coordinates).
+   - Fires `NotificationService.notifyAdmins(..., { severity: 'CRITICAL' })`.
+3. `NotificationService.notifyAdmins` with `severity: 'CRITICAL'`:
+   - Writes an in-app notification for every admin.
+   - Sends FCM push via `PushService`.
+   - Fire-and-forget WhatsApp to each admin's phone via
+     `WhatsAppService.sendMessage` (requires `TWILIO_ACCOUNT_SID` /
+     `TWILIO_AUTH_TOKEN` / `TWILIO_WHATSAPP_NUMBER`). Safely no-ops in
+     MOCK mode.
+4. `reportIncident` with severity ≥4 also escalates to `CRITICAL`.
+
+## 8. Chat message encryption
+
+Chat messages are encrypted at rest using the same AES-256-GCM pipeline
+as PII (`EncryptionService`). `ChatService.sendMessage` encrypts before
+`prisma.chatMessage.create`; read paths (`getMessages`, `listRooms`)
+decrypt with `decryptSafe` so that pre-encryption rows from earlier
+schema revisions keep rendering.
 
 ## 8. Things to rotate before any public deploy
 
