@@ -505,7 +505,23 @@ export class BookingService {
     if (booking.status !== 'CONFIRMED') throw new BadRequestException('Hanya booking CONFIRMED yang bisa meminta pengganti');
 
     const updated = await this.prisma.booking.update({ where: { id: bookingId }, data: { replacementRequested: true, replacementNote: note } });
-    // TODO: send notification to client / ops team
+
+    // Notify the client + platform ops so they can find a replacement escort.
+    this.notificationService.create(
+      booking.clientId,
+      'Permintaan pengganti dari escort',
+      `Escort Anda meminta pengganti untuk booking ${booking.id}. ${note ? `Catatan: ${note}` : ''}`.trim(),
+      'BOOKING',
+      { bookingId: booking.id, replacementNote: note },
+    ).catch(() => {});
+    this.notificationService.notifyAdmins(
+      'Permintaan pengganti escort',
+      `Escort meminta pengganti untuk booking ${booking.id}.`,
+      'BOOKING',
+      { link: `/bookings/${booking.id}`, bookingId: booking.id, replacementNote: note },
+      { severity: 'WARN' },
+    ).catch(() => {});
+
     return updated;
   }
 
