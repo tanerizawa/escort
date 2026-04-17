@@ -54,8 +54,8 @@ export function Navbar() {
               href={link.href}
               className={`text-[13px] uppercase tracking-widest-2 transition-colors ${
                 pathname === link.href
-                  ? 'text-brand-400'
-                  : 'text-dark-400 hover:text-brand-400'
+                  ? 'text-rose-200'
+                  : 'text-dark-400 hover:text-rose-200'
               }`}
             >
               {link.label}
@@ -142,13 +142,13 @@ export function Navbar() {
             <LanguageSwitcher compact />
             <Link
               href="/login"
-              className="hidden text-[13px] uppercase tracking-widest text-dark-300 transition-colors hover:text-brand-400 sm:block"
+              className="hidden text-[13px] uppercase tracking-widest text-dark-300 transition-colors hover:text-rose-200 sm:block"
             >
               {t('common.login')}
             </Link>
             <Link
               href="/register"
-              className="rounded-none border border-brand-400/40 bg-brand-400/[0.06] px-6 py-2.5 text-[11px] font-semibold uppercase tracking-widest-2 text-brand-400 transition-all hover:bg-brand-400/15 hover:border-brand-400/60"
+              className="rounded-none border border-brand-400/40 bg-brand-400/[0.06] px-6 py-2.5 text-[11px] font-semibold uppercase tracking-widest-2 text-brand-400 transition-all hover:bg-rose-500/10 hover:border-rose-400/50 hover:text-rose-200"
             >
               {t('common.register')}
             </Link>
