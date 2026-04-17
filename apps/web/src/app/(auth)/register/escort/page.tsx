@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { Check, X } from 'lucide-react';
 import { WizardShell, WizardStep, StepIndicator, WizardNavigation } from '@/components/ui/wizard';
+import { RoseGlyph } from '@/components/brand/rose-glyph';
 
 // ─── Types ──────────────────────────────────────────────────────
 interface FormData {
@@ -252,24 +253,32 @@ export default function EscortRegisterPage() {
 
   // ─── Render ─────────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen items-center justify-center bg-dark-950 px-4 py-10">
-      <div className="w-full max-w-2xl">
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="font-serif text-3xl tracking-wide text-dark-100">
-            ARETON<span className="text-brand-400">.id</span>
-          </h1>
-          <p className="mt-1 text-xs uppercase tracking-[0.2em] text-dark-500">Pendaftaran Pendamping Profesional</p>
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="mt-5 border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
-            {error}
+    <div className="w-full">
+      <header className="mb-10 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="text-gradient-rose-gold">
+            <RoseGlyph className="h-8 w-8" strokeWidth={1.1} />
           </div>
-        )}
+          <div className="gold-rose-line flex-1" />
+        </div>
+        <p className="act-mark">Portal Partner · Registrasi</p>
+        <h1 className="font-display text-3xl font-medium leading-tight text-dark-100">
+          Bergabung sebagai{' '}
+          <span className="italic text-gradient-rose-gold">companion terverifikasi</span>
+        </h1>
+        <p className="font-serif text-base leading-relaxed text-dark-400">
+          Empat babak singkat — data pribadi, penampilan, profesional, dokumen — lalu tim
+          kami akan mengulas profil Anda dalam 2–3 hari kerja.
+        </p>
+      </header>
 
-        {/* Form */}
+      {error && (
+        <div className="mb-6 border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          {error}
+        </div>
+      )}
+
+      {/* Form */}
         <WizardShell totalSteps={4}>
           {({ currentStep, next, prev, direction }) => (
         <div className="mt-5 border border-dark-700/20 bg-dark-800/10 p-6 sm:p-8">
@@ -662,7 +671,7 @@ export default function EscortRegisterPage() {
                 totalSteps={4}
                 onNext={() => { const err = validate(4); if (err) { setError(err); return false; } setError(''); handleSubmit(); return false; }}
                 onPrev={prev}
-                nextLabel={submitting ? 'Mendaftar...' : '🚀 Daftar Sekarang'}
+                nextLabel={submitting ? 'Mendaftar...' : 'Kirim Pendaftaran'}
                 nextDisabled={submitting}
                 isLoading={submitting}
               />
@@ -672,12 +681,13 @@ export default function EscortRegisterPage() {
           )}
         </WizardShell>
 
-        {/* Login link */}
-        <p className="mt-5 text-center text-xs text-dark-500">
-          Sudah punya akun?{' '}
-          <a href="/login" className="text-brand-400 hover:underline">Masuk di sini</a>
-        </p>
-      </div>
+      {/* Login link */}
+      <p className="mt-6 text-center text-xs uppercase tracking-widest-2 text-dark-500">
+        Sudah punya akun?{' '}
+        <a href="/login/escort" className="text-rose-200 hover:text-rose-100">
+          Masuk di portal partner
+        </a>
+      </p>
     </div>
   );
 }

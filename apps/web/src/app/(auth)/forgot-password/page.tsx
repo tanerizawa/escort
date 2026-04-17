@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import api from '@/lib/api';
 import { WizardShell, WizardStep, StepIndicator, WizardNavigation } from '@/components/ui/wizard';
+import { RoseGlyph } from '@/components/brand/rose-glyph';
 
 const STEPS = [{ label: 'Email' }, { label: 'Terkirim' }];
 
@@ -42,93 +43,125 @@ export default function ForgotPasswordPage() {
         if (!goToSent) setGoToSent(() => next);
         return (
           <>
+            <header className="mb-10 space-y-5">
+              <div className="flex items-center gap-3">
+                <div className="text-gradient-rose-gold">
+                  <RoseGlyph className="h-8 w-8" strokeWidth={1.1} />
+                </div>
+                <div className="gold-rose-line flex-1" />
+              </div>
+              <p className="act-mark">Pemulihan Akun</p>
+              <h1 className="font-display text-3xl font-medium leading-tight text-dark-100">
+                Lupa{' '}
+                <span className="italic text-gradient-rose-gold">password?</span>
+              </h1>
+              <p className="font-serif text-base leading-relaxed text-dark-400">
+                Kami akan mengirimkan link reset ke email Anda — sub rosa, sub fide.
+              </p>
+            </header>
+
             <StepIndicator steps={STEPS} current={currentStep} className="mb-8" />
 
-            {/* Step 1: Enter email */}
             <WizardStep step={0}>
               <div className="space-y-6">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-400/10">
-                  <svg className="h-8 w-8 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div className="text-center">
-                  <h2 className="text-xl font-light text-dark-100">Lupa Password</h2>
-                  <p className="mt-1 text-sm text-dark-400">
-                    Masukkan email Anda dan kami akan mengirimkan link reset
-                  </p>
-                </div>
-
                 {notFound && (
-                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
+                  <div className="border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
                     <p className="font-medium">Email tidak terdaftar</p>
-                    <p className="mt-1 text-amber-400/80">
+                    <p className="mt-1 text-rose-200/80">
                       Email <strong>{email}</strong> belum terdaftar.{' '}
-                      <Link href="/register" className="underline hover:text-amber-300">Daftar sekarang</Link>
+                      <Link href="/register" className="underline hover:text-rose-100">
+                        Daftar sekarang
+                      </Link>
                     </p>
                   </div>
                 )}
 
                 {error && (
-                  <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                  <div className="border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
                     {error}
                   </div>
                 )}
 
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-dark-300">Email</label>
-                  <Input
-                    type="email"
-                    placeholder="nama@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    autoFocus
-                  />
-                </div>
+                <Input
+                  label="Email"
+                  type="email"
+                  placeholder="nama@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoFocus
+                />
 
                 <WizardNavigation
                   nextLabel={isLoading ? 'Mengirim...' : 'Kirim Link Reset'}
                   nextDisabled={!email || isLoading}
-                  onNext={() => { handleSubmit(); return false; }}
+                  onNext={() => {
+                    handleSubmit();
+                    return false;
+                  }}
                   showPrev={false}
                 />
 
                 <p className="text-center text-sm text-dark-500">
                   Ingat password Anda?{' '}
-                  <Link href="/login" className="text-brand-400 hover:text-brand-300 transition-colors">
+                  <Link
+                    href="/login"
+                    className="text-rose-200 transition-colors hover:text-rose-100"
+                  >
                     Masuk di sini
                   </Link>
                 </p>
               </div>
             </WizardStep>
 
-            {/* Step 2: Success confirmation */}
             <WizardStep step={1}>
               <div className="space-y-6 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10">
-                  <svg className="h-8 w-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
+                <div className="mx-auto flex h-14 w-14 items-center justify-center border border-rose-400/30 text-rose-200">
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-xl font-light text-dark-100">Email Terkirim</h2>
-                  <p className="mt-2 text-sm text-dark-400">
-                    Jika email Anda terdaftar, kami telah mengirimkan link untuk mereset password.
-                    Silakan cek inbox dan spam folder Anda.
+                  <p className="act-mark !text-rose-200">Terkirim</p>
+                  <h2 className="mt-3 font-display text-2xl font-medium text-dark-100">
+                    Periksa inbox Anda
+                  </h2>
+                  <p className="mx-auto mt-4 max-w-md font-serif text-[15px] leading-relaxed text-dark-400">
+                    Jika email Anda terdaftar, kami telah mengirimkan link untuk mereset
+                    password. Silakan cek inbox dan spam folder.
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-dark-700/30 bg-dark-800/20 px-4 py-3">
-                  <p className="text-xs text-dark-500">Dikirim ke</p>
-                  <p className="mt-1 text-sm font-medium text-dark-200">{email}</p>
+                <div className="border border-dark-700/30 bg-dark-800/40 px-4 py-3 text-left">
+                  <p className="text-[10px] uppercase tracking-widest text-dark-500">
+                    Dikirim ke
+                  </p>
+                  <p className="mt-1 font-display text-sm font-medium text-rose-200">
+                    {email}
+                  </p>
                 </div>
 
                 <Link
                   href="/login"
-                  className="inline-flex items-center gap-2 text-sm text-brand-400 hover:text-brand-300 transition-colors"
+                  className="inline-flex items-center gap-2 text-sm text-rose-200 transition-colors hover:text-rose-100"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                    />
                   </svg>
                   Kembali ke Login
                 </Link>

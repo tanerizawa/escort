@@ -1,14 +1,31 @@
 'use client';
 
-import { useState, useEffect, Suspense, useRef } from 'react';
+import { useState, useEffect, Suspense, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import { useSearchParams } from 'next/navigation';
 import { WizardShell, WizardStep, StepIndicator, WizardNavigation } from '@/components/ui/wizard';
+import { RoseGlyph } from '@/components/brand/rose-glyph';
 import api from '@/lib/api';
 
+function PageHeader({ mark, title, description }: { mark: string; title: string; description: string }) {
+  return (
+    <header className="mb-10 space-y-5">
+      <div className="flex items-center gap-3">
+        <div className="text-gradient-rose-gold">
+          <RoseGlyph className="h-8 w-8" strokeWidth={1.1} />
+        </div>
+        <div className="gold-rose-line flex-1" />
+      </div>
+      <p className="act-mark">{mark}</p>
+      <h1 className="font-display text-3xl font-medium leading-tight text-dark-100">
+        {title}
+      </h1>
+      <p className="font-serif text-base leading-relaxed text-dark-400">{description}</p>
+    </header>
+  );
+}
+
 function VerifyEmailContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams?.get('token') || '';
 
@@ -20,36 +37,33 @@ function VerifyEmailContent() {
   const [resendSuccess, setResendSuccess] = useState('');
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // If token in URL, verify immediately
-  useEffect(() => {
-    if (token) {
-      verifyWithToken(token);
-    }
-  }, [token]);
-
-  const verifyWithToken = async (t: string) => {
+  const verifyWithToken = useCallback(async (t: string) => {
     setIsLoading(true);
     setError('');
     try {
       await api.post('/auth/verify-email', { token: t });
       setGoToSuccess(true);
     } catch (err: any) {
-      setError(err?.response?.data?.data?.message || err?.response?.data?.message || 'Token verifikasi tidak valid atau telah kadaluarsa.');
+      setError(
+        err?.response?.data?.data?.message ||
+          err?.response?.data?.message ||
+          'Token verifikasi tidak valid atau telah kadaluarsa.',
+      );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (token) verifyWithToken(token);
+  }, [token, verifyWithToken]);
 
   const handleCodeChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
     const newCode = [...code];
     newCode[index] = value.slice(-1);
     setCode(newCode);
-
-    // Auto-focus next input
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
+    if (value && index < 5) inputRefs.current[index + 1]?.focus();
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
@@ -62,13 +76,9 @@ function VerifyEmailContent() {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
     const newCode = [...code];
-    for (let i = 0; i < pasted.length; i++) {
-      newCode[i] = pasted[i];
-    }
+    for (let i = 0; i < pasted.length; i++) newCode[i] = pasted[i];
     setCode(newCode);
-    if (pasted.length >= 6) {
-      inputRefs.current[5]?.focus();
-    }
+    if (pasted.length >= 6) inputRefs.current[5]?.focus();
   };
 
   const handleSubmit = async () => {
@@ -77,21 +87,19 @@ function VerifyEmailContent() {
       setError('Masukkan 6 digit kode verifikasi');
       return;
     }
-
     setIsLoading(true);
     setError('');
-
     try {
-      // Get userId from localStorage (stored during registration)
       const storedUser = localStorage.getItem('pendingVerificationUserId');
-      await api.post('/auth/verify-email', {
-        code: fullCode,
-        userId: storedUser,
-      });
+      await api.post('/auth/verify-email', { code: fullCode, userId: storedUser });
       setGoToSuccess(true);
       localStorage.removeItem('pendingVerificationUserId');
     } catch (err: any) {
-      setError(err?.response?.data?.data?.message || err?.response?.data?.message || 'Kode verifikasi salah atau telah kadaluarsa.');
+      setError(
+        err?.response?.data?.data?.message ||
+          err?.response?.data?.message ||
+          'Kode verifikasi salah atau telah kadaluarsa.',
+      );
     } finally {
       setIsLoading(false);
     }
@@ -105,7 +113,11 @@ function VerifyEmailContent() {
       await api.post('/auth/resend-verification');
       setResendSuccess('Email verifikasi telah dikirim ulang. Periksa inbox Anda.');
     } catch (err: any) {
-      setError(err?.response?.data?.data?.message || err?.response?.data?.message || 'Gagal mengirim ulang. Coba lagi nanti.');
+      setError(
+        err?.response?.data?.data?.message ||
+          err?.response?.data?.message ||
+          'Gagal mengirim ulang. Coba lagi nanti.',
+      );
     } finally {
       setResendLoading(false);
     }
@@ -113,43 +125,41 @@ function VerifyEmailContent() {
 
   if (isLoading && token) {
     return (
-      <div className="text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-brand-400/10">
-          <svg className="h-8 w-8 text-brand-400 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      <div>
+        <PageHeader
+          mark="Verifikasi Email"
+          title="Sedang memverifikasi..."
+          description="Tunggu sebentar, kami sedang memvalidasi token Anda."
+        />
+        <div className="mx-auto flex h-14 w-14 items-center justify-center border border-rose-400/30 text-rose-200">
+          <svg className="h-6 w-6 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         </div>
-        <h2 className="text-2xl font-light text-dark-100">Memverifikasi Email...</h2>
-        <p className="mt-3 text-sm text-dark-400">Tunggu sebentar, kami sedang memverifikasi email Anda.</p>
       </div>
     );
   }
 
   return (
     <div>
+      <PageHeader
+        mark="Verifikasi Email"
+        title="Sampaikan 6 digit kode Anda"
+        description="Kode telah kami kirim ke email Anda — periksa inbox dan folder spam."
+      />
+
       <WizardShell totalSteps={2} initialStep={goToSuccess ? 1 : 0}>
-        <StepIndicator labels={['Masukkan Kode', 'Verifikasi Berhasil']} />
+        <StepIndicator labels={['Masukkan Kode', 'Selesai']} />
 
         <WizardStep step={0}>
-          <div className="text-center mb-6">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-400/10">
-              <span className="text-2xl">📧</span>
-            </div>
-            <h3 className="text-lg font-light text-dark-100">Verifikasi Email</h3>
-            <p className="mt-1 text-sm text-dark-400">
-              Masukkan 6 digit kode yang dikirim ke email Anda
-            </p>
-          </div>
-
           {error && (
-            <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            <div className="mb-5 border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
               {error}
             </div>
           )}
-
           {resendSuccess && (
-            <div className="mb-4 rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-400">
+            <div className="mb-5 border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
               {resendSuccess}
             </div>
           )}
@@ -158,7 +168,9 @@ function VerifyEmailContent() {
             {code.map((digit, index) => (
               <input
                 key={index}
-                ref={(el) => { inputRefs.current[index] = el; }}
+                ref={(el) => {
+                  inputRefs.current[index] = el;
+                }}
                 type="text"
                 inputMode="numeric"
                 maxLength={1}
@@ -166,7 +178,7 @@ function VerifyEmailContent() {
                 onChange={(e) => handleCodeChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 onPaste={index === 0 ? handlePaste : undefined}
-                className="h-14 w-12 rounded-lg border border-dark-700 bg-dark-800 text-center text-xl font-semibold text-dark-100 outline-none transition-colors focus:border-brand-400 focus:ring-1 focus:ring-brand-400/30"
+                className="h-14 w-12 border border-dark-700/40 bg-dark-900/60 text-center font-display text-xl font-medium text-rose-200 outline-none transition-colors focus:border-rose-400/50 focus:ring-1 focus:ring-rose-400/20"
               />
             ))}
           </div>
@@ -177,36 +189,56 @@ function VerifyEmailContent() {
               <button
                 onClick={handleResend}
                 disabled={resendLoading}
-                className="text-brand-400 hover:text-brand-300 transition-colors disabled:opacity-50"
+                className="text-rose-200 transition-colors hover:text-rose-100 disabled:opacity-50"
               >
                 {resendLoading ? 'Mengirim...' : 'Kirim Ulang'}
               </button>
             </p>
           </div>
 
-          <WizardNavigation
-            nextLabel={isLoading ? 'Memverifikasi...' : 'Verifikasi Email'}
-            nextDisabled={isLoading || code.join('').length !== 6}
-            onNext={() => { handleSubmit(); return false; }}
-            prevLabel="Login"
-            onPrev={() => { window.location.href = '/login'; }}
-          />
+          <div className="mt-8">
+            <WizardNavigation
+              nextLabel={isLoading ? 'Memverifikasi...' : 'Verifikasi Email'}
+              nextDisabled={isLoading || code.join('').length !== 6}
+              onNext={() => {
+                handleSubmit();
+                return false;
+              }}
+              prevLabel="Login"
+              onPrev={() => {
+                window.location.href = '/login';
+              }}
+            />
+          </div>
         </WizardStep>
 
         <WizardStep step={1}>
-          <div className="text-center">
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
-              <svg className="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
+          <div className="space-y-6 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center border border-rose-400/30 text-rose-200">
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-2xl font-light text-dark-100">Email Terverifikasi!</h2>
-            <p className="mt-3 text-sm text-dark-400">
-              Email Anda telah berhasil diverifikasi. Sekarang Anda dapat menggunakan semua fitur ARETON.id.
-            </p>
+            <div>
+              <p className="act-mark !text-rose-200">Terverifikasi</p>
+              <h2 className="mt-3 font-display text-2xl font-medium text-dark-100">
+                Selamat datang di{' '}
+                <span className="italic text-gradient-rose-gold">ARETON</span>
+              </h2>
+              <p className="mx-auto mt-4 max-w-md font-serif text-[15px] leading-relaxed text-dark-400">
+                Email Anda telah diverifikasi. Sekarang Anda dapat menggunakan semua fitur
+                platform.
+              </p>
+            </div>
             <Link
               href="/login"
-              className="mt-6 inline-block rounded-lg bg-brand-400 px-8 py-3 text-sm font-medium text-dark-900 hover:bg-brand-300 transition-colors"
+              className="inline-block rounded-none bg-brand-400 px-10 py-4 text-[12px] font-bold uppercase tracking-widest-2 text-dark-900 transition-all hover:bg-brand-300"
             >
               Masuk Sekarang
             </Link>

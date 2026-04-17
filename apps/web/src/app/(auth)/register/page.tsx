@@ -6,6 +6,33 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
 import { Input } from '@/components/ui/input';
 import { WizardShell, WizardStep, WizardNavigation } from '@/components/ui/wizard';
+import { RoseGlyph } from '@/components/brand/rose-glyph';
+
+function StepHeader({
+  mark,
+  title,
+  description,
+}: {
+  mark: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <header className="space-y-5">
+      <div className="flex items-center gap-3">
+        <div className="text-gradient-rose-gold">
+          <RoseGlyph className="h-8 w-8" strokeWidth={1.1} />
+        </div>
+        <div className="gold-rose-line flex-1" />
+      </div>
+      <p className="act-mark">{mark}</p>
+      <h2 className="font-display text-3xl font-medium leading-tight text-dark-100">
+        {title}
+      </h2>
+      <p className="font-serif text-base leading-relaxed text-dark-400">{description}</p>
+    </header>
+  );
+}
 
 type RoleType = 'CLIENT' | 'ESCORT';
 
@@ -68,16 +95,12 @@ export default function RegisterPage() {
       <WizardShell steps={steps}>
         {/* Step 1: Role Selection */}
         <WizardStep>
-          <div className="space-y-6">
-            <div className="flex flex-col items-center text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-400/10 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-light text-dark-100">Daftar</h2>
-              <p className="mt-2 text-sm text-dark-400">Pilih peran yang sesuai dengan kebutuhan Anda</p>
-            </div>
+          <div className="space-y-8">
+            <StepHeader
+              mark="Langkah 01 · Peran"
+              title="Siapa Anda di ARETON?"
+              description="Pilih peran yang sesuai — keputusan ini bisa diubah melalui tim support."
+            />
 
             <div className="grid grid-cols-1 gap-3">
               {([
@@ -106,22 +129,32 @@ export default function RegisterPage() {
                   key={r.value}
                   type="button"
                   onClick={() => setRole(r.value)}
-                  className={`flex items-start gap-4 rounded-xl border p-5 text-left transition-all duration-200 ${
+                  className={`flex items-start gap-4 border p-5 text-left transition-all duration-300 ${
                     role === r.value
-                      ? 'border-brand-400/40 bg-brand-400/5 ring-1 ring-brand-400/10'
-                      : 'border-dark-700/40 bg-dark-800/20 hover:border-dark-600/50 hover:bg-dark-800/30'
+                      ? 'border-rose-400/40 bg-rose-500/10'
+                      : 'border-dark-700/40 bg-dark-800/30 hover:border-rose-400/20 hover:bg-dark-800/50'
                   }`}
                 >
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                    role === r.value ? 'bg-brand-400/15 text-brand-400' : 'bg-dark-700/40 text-dark-400'
-                  }`}>
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center border ${
+                      role === r.value
+                        ? 'border-rose-400/40 text-rose-200'
+                        : 'border-dark-700/40 text-dark-400'
+                    }`}
+                  >
                     {r.icon}
                   </div>
                   <div>
-                    <p className={`text-sm font-medium ${role === r.value ? 'text-brand-400' : 'text-dark-200'}`}>
+                    <p
+                      className={`font-display text-base font-medium ${
+                        role === r.value ? 'text-rose-200' : 'text-dark-100'
+                      }`}
+                    >
                       {r.label}
                     </p>
-                    <p className="mt-1 text-xs text-dark-500 leading-relaxed">{r.desc}</p>
+                    <p className="mt-1 font-serif text-sm leading-relaxed text-dark-400">
+                      {r.desc}
+                    </p>
                   </div>
                 </button>
               ))}
@@ -131,7 +164,10 @@ export default function RegisterPage() {
 
             <p className="text-center text-sm text-dark-400">
               Sudah punya akun?{' '}
-              <Link href="/login" className="text-brand-400 hover:text-brand-300 transition-colors">
+              <Link
+                href="/login"
+                className="text-rose-200 transition-colors hover:text-rose-100"
+              >
                 Masuk
               </Link>
             </p>
@@ -140,16 +176,12 @@ export default function RegisterPage() {
 
         {/* Step 2: Name */}
         <WizardStep>
-          <div className="space-y-6">
-            <div className="flex flex-col items-center text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-400/10 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-light text-dark-100">Siapa nama Anda?</h2>
-              <p className="mt-2 text-sm text-dark-400">Nama akan ditampilkan pada profil Anda</p>
-            </div>
+          <div className="space-y-8">
+            <StepHeader
+              mark="Langkah 02 · Identitas"
+              title="Siapa nama Anda?"
+              description="Nama akan ditampilkan pada profil dan salam di setiap pertemuan."
+            />
 
             <div className="space-y-4">
               <Input
@@ -180,19 +212,15 @@ export default function RegisterPage() {
 
         {/* Step 3: Contact */}
         <WizardStep>
-          <div className="space-y-6">
-            <div className="flex flex-col items-center text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-400/10 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-light text-dark-100">Informasi kontak</h2>
-              <p className="mt-2 text-sm text-dark-400">Email digunakan untuk login dan notifikasi</p>
-            </div>
+          <div className="space-y-8">
+            <StepHeader
+              mark="Langkah 03 · Kontak"
+              title="Bagaimana kami menghubungi Anda?"
+              description="Email digunakan untuk login dan notifikasi. Nomor telepon opsional."
+            />
 
             {error && (
-              <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              <div className="border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
                 {error}
               </div>
             )}
@@ -235,19 +263,15 @@ export default function RegisterPage() {
 
         {/* Step 4: Password & Terms */}
         <WizardStep>
-          <div className="space-y-6">
-            <div className="flex flex-col items-center text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-400/10 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-light text-dark-100">Buat password</h2>
-              <p className="mt-2 text-sm text-dark-400">Minimal 8 karakter untuk keamanan akun</p>
-            </div>
+          <div className="space-y-8">
+            <StepHeader
+              mark="Langkah 04 · Kunci"
+              title="Buat password Anda"
+              description="Minimal 8 karakter untuk keamanan akun — sub rosa, sub fide."
+            />
 
             {error && (
-              <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              <div className="border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
                 {error}
               </div>
             )}
@@ -301,20 +325,20 @@ export default function RegisterPage() {
                 error={confirmPassword && password !== confirmPassword ? 'Password tidak cocok' : undefined}
               />
 
-              <label className="flex items-start gap-3 rounded-xl border border-dark-700/40 bg-dark-800/20 p-4 cursor-pointer transition-all hover:border-dark-600/50">
+              <label className="flex cursor-pointer items-start gap-3 border border-dark-700/40 bg-dark-800/30 p-4 transition-all hover:border-rose-400/25">
                 <input
                   type="checkbox"
                   checked={agree}
                   onChange={(e) => setAgree(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-dark-600/30 bg-dark-800 text-brand-400 focus:ring-brand-400/20"
+                  className="mt-0.5 h-4 w-4 rounded border-dark-600/30 bg-dark-800 text-rose-400 focus:ring-rose-400/20"
                 />
-                <span className="text-sm text-dark-400 leading-relaxed">
+                <span className="font-serif text-sm leading-relaxed text-dark-400">
                   Saya menyetujui{' '}
-                  <Link href="/terms" className="text-brand-400/80 hover:text-brand-400">
-                    Syarat & Ketentuan
+                  <Link href="/terms" className="text-rose-200 hover:text-rose-100">
+                    Syarat &amp; Ketentuan
                   </Link>{' '}
                   dan{' '}
-                  <Link href="/privacy" className="text-brand-400/80 hover:text-brand-400">
+                  <Link href="/privacy" className="text-rose-200 hover:text-rose-100">
                     Kebijakan Privasi
                   </Link>
                 </span>
