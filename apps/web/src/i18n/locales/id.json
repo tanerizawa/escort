@@ -9,6 +9,7 @@
     "edit": "Edit",
     "back": "Kembali",
     "next": "Selanjutnya",
+    "continue": "Lanjutkan",
     "previous": "Sebelumnya",
     "search": "Cari",
     "filter": "Filter",
@@ -199,7 +200,24 @@
     "newPassword": "Password Baru",
     "confirmPassword": "Konfirmasi Password",
     "sendLink": "Kirim Link Reset",
-    "emailPlaceholder": "nama@email.com"
+    "emailPlaceholder": "nama@email.com",
+
+    "portalClient": "Portal Klien",
+    "portalEscort": "Portal Partner",
+    "clientLoginTitle": "Masuk ke ARETON",
+    "clientLoginSubtitle": "Ruang klien untuk menjelajah, memesan, dan menikmati layanan pendamping profesional.",
+    "escortLoginTitle": "Masuk sebagai Partner",
+    "escortLoginSubtitle": "Ruang kerja khusus bagi companion terverifikasi — jadwal, earning, dan tamu Anda semua berada di sini.",
+    "loginAsEscortPrompt": "Apakah Anda companion profesional?",
+    "loginAsEscortCTA": "Masuk lewat portal Partner",
+    "loginAsClientPrompt": "Bukan partner? Ini portal untuk companion.",
+    "loginAsClientCTA": "Masuk sebagai klien",
+    "wrongPortalClient": "Akun ini terdaftar sebagai klien. Silakan gunakan portal klien.",
+    "wrongPortalEscort": "Akun ini terdaftar sebagai partner. Silakan gunakan portal partner.",
+    "backToHome": "Kembali ke Beranda",
+    "adab": "Sub rosa · sub fide — di bawah mawar, dalam kepercayaan.",
+    "stepOne": "Langkah 01",
+    "stepTwo": "Langkah 02"
   },
   "dashboard": {
     "welcome": "Selamat datang di dashboard Anda. Apa yang ingin Anda lakukan hari ini?",
