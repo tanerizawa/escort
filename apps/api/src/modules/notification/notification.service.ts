@@ -37,12 +37,22 @@ export class NotificationService {
   }
 
   /**
-   * Broadcast a notification to all ADMIN and SUPER_ADMIN users
+   * Broadcast a notification to all ADMIN and SUPER_ADMIN users.
+   *
+   * For CRITICAL severity events (SOS, safety incidents) we additionally
+   * try to reach admins via WhatsApp if TWILIO_* is configured, so the
+   * signal doesn't sit in an unattended admin inbox.
    */
-  async notifyAdmins(title: string, body: string, type: string, data?: Record<string, any>) {
+  async notifyAdmins(
+    title: string,
+    body: string,
+    type: string,
+    data?: Record<string, any>,
+    options?: { severity?: 'INFO' | 'WARN' | 'CRITICAL' },
+  ) {
     const admins = await this.prisma.user.findMany({
       where: { role: { in: ['ADMIN', 'SUPER_ADMIN'] }, isActive: true },
-      select: { id: true },
+      select: { id: true, phone: true },
     });
 
     if (admins.length === 0) return [];
@@ -57,9 +67,16 @@ export class NotificationService {
       })),
     });
 
-    // Also send push to each admin (fire & forget)
     for (const admin of admins) {
       this.pushService.sendToUser(admin.id, { title, body, data: data as any }).catch(() => {});
+
+      if (options?.severity === 'CRITICAL' && admin.phone) {
+        // Fire & forget WhatsApp escalation for severity=CRITICAL.
+        // WhatsAppService no-ops safely when Twilio is unconfigured.
+        this.whatsappService
+          .sendMessage(admin.phone, `[${title}] ${body}`)
+          .catch(() => {});
+      }
     }
 
     return notifications;

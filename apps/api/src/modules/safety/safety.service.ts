@@ -77,12 +77,14 @@ export class SafetyService {
       severity: 'CRITICAL',
     });
 
-    // Notify admins of SOS alert
+    // Notify admins of SOS alert (CRITICAL severity escalates to WhatsApp
+    // when Twilio is configured).
     this.notificationService.notifyAdmins(
       '🚨 SOS Alert!',
       `SOS darurat dipicu pada booking ${bookingId}. ${description || 'Segera tangani.'}`,
       'SAFETY',
-      { link: `/incidents`, bookingId, incidentId: incident.id },
+      { link: `/incidents`, bookingId, incidentId: incident.id, severity: 'CRITICAL' },
+      { severity: 'CRITICAL' },
     ).catch(() => {});
 
     return {
@@ -129,12 +131,15 @@ export class SafetyService {
       },
     });
 
-    // Notify admins of new incident report
+    // Notify admins; severity 4+ incidents escalate to WhatsApp when
+    // the Twilio provider is configured (severity 5 = CRITICAL).
+    const escalate = data.severity >= 4 ? 'CRITICAL' : 'WARN';
     this.notificationService.notifyAdmins(
       `⚠️ Laporan Insiden (Severity ${data.severity})`,
       `Insiden baru dilaporkan pada booking ${data.bookingId}: ${data.description.slice(0, 100)}`,
       'SAFETY',
-      { link: `/incidents`, bookingId: data.bookingId, incidentId: incident.id },
+      { link: `/incidents`, bookingId: data.bookingId, incidentId: incident.id, severity: escalate },
+      { severity: escalate as 'WARN' | 'CRITICAL' },
     ).catch(() => {});
 
     return incident;
