@@ -109,7 +109,7 @@ export class SafetyService {
     }
 
     // Upload evidence files
-    let evidenceUrls: string[] = [];
+    const evidenceUrls: string[] = [];
     if (files?.length) {
       for (const file of files) {
         const upload = await this.uploadService.saveFile(file, 'incident-evidence', {

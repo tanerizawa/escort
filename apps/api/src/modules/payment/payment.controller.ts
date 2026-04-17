@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PaymentService } from './payment.service';
 import { XenditService } from './xendit.service';
@@ -141,7 +142,12 @@ export class PaymentController {
     return this.paymentService.refund(userId, paymentId, dto);
   }
 
+  // Payment gateway webhooks — @Public() bypasses auth; @SkipThrottle()
+  // keeps the global throttler from rejecting bursty provider callbacks
+  // (providers commonly retry many times per second on delivery failure).
+
   @Public()
+  @SkipThrottle()
   @Post('webhook')
   @HttpCode(200)
   @ApiOperation({ summary: 'Handle Xendit payment webhook notification' })
@@ -154,6 +160,7 @@ export class PaymentController {
   }
 
   @Public()
+  @SkipThrottle()
   @Post('crypto-webhook')
   @HttpCode(200)
   @ApiOperation({ summary: 'Handle NOWPayments crypto webhook (IPN)' })
@@ -166,6 +173,7 @@ export class PaymentController {
   }
 
   @Public()
+  @SkipThrottle()
   @Post('doku-webhook')
   @HttpCode(200)
   @ApiOperation({ summary: 'Handle DOKU payment notification' })

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, IsEnum, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsOptional, IsEnum, IsBoolean, Min, Max } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ValidatePromoCodeDto {
@@ -9,6 +9,7 @@ export class ValidatePromoCodeDto {
 
   @ApiProperty({ description: 'Order amount in IDR' })
   @IsNumber()
+  @Min(0)
   orderAmount: number;
 }
 
@@ -31,16 +32,22 @@ export class TriggerSOSDto {
   @ApiPropertyOptional({ description: 'Severity 1-5 (defaults to 5 for SOS)' })
   @IsOptional()
   @IsNumber()
+  @Min(1)
+  @Max(5)
   severity?: number;
 
-  @ApiPropertyOptional({ description: 'Latitude at time of SOS' })
+  @ApiPropertyOptional({ description: 'Latitude at time of SOS (-90..90)' })
   @IsOptional()
   @IsNumber()
+  @Min(-90)
+  @Max(90)
   lat?: number;
 
-  @ApiPropertyOptional({ description: 'Longitude at time of SOS' })
+  @ApiPropertyOptional({ description: 'Longitude at time of SOS (-180..180)' })
   @IsOptional()
   @IsNumber()
+  @Min(-180)
+  @Max(180)
   lng?: number;
 }
 
@@ -62,21 +69,28 @@ export class ReportIncidentDto {
 
   @ApiProperty({ description: 'Severity level (1-5)' })
   @IsNumber()
+  @Min(1)
+  @Max(5)
   severity: number;
 }
 
 export class PingLocationDto {
-  @ApiProperty({ description: 'Latitude' })
+  @ApiProperty({ description: 'Latitude (-90..90)' })
   @IsNumber()
+  @Min(-90)
+  @Max(90)
   lat: number;
 
-  @ApiProperty({ description: 'Longitude' })
+  @ApiProperty({ description: 'Longitude (-180..180)' })
   @IsNumber()
+  @Min(-180)
+  @Max(180)
   lng: number;
 
   @ApiPropertyOptional({ description: 'GPS accuracy in meters' })
   @IsOptional()
   @IsNumber()
+  @Min(0)
   accuracy?: number;
 }
 
@@ -86,17 +100,22 @@ export class UpdateLocationDto {
   @IsNotEmpty()
   bookingId: string;
 
-  @ApiProperty({ description: 'Latitude' })
+  @ApiProperty({ description: 'Latitude (-90..90)' })
   @IsNumber()
+  @Min(-90)
+  @Max(90)
   lat: number;
 
-  @ApiProperty({ description: 'Longitude' })
+  @ApiProperty({ description: 'Longitude (-180..180)' })
   @IsNumber()
+  @Min(-180)
+  @Max(180)
   lng: number;
 
   @ApiPropertyOptional({ description: 'GPS accuracy in meters' })
   @IsOptional()
   @IsNumber()
+  @Min(0)
   accuracy?: number;
 }
 
