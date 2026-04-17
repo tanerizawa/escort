@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import api from '@/lib/api';
 
 interface SOSButtonProps {
   bookingId?: string;
@@ -46,19 +47,11 @@ export default function SOSButton({ bookingId, isVisible = true }: SOSButtonProp
         // Location not available, proceed without it
       }
 
-      const token = localStorage.getItem('accessToken');
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/safety/sos`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          bookingId,
-          latitude,
-          longitude,
-          timestamp: new Date().toISOString(),
-        }),
+      await api.post('/safety/sos', {
+        bookingId,
+        latitude,
+        longitude,
+        timestamp: new Date().toISOString(),
       });
 
       setSent(true);

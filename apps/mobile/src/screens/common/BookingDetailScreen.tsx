@@ -213,7 +213,7 @@ export function BookingDetailScreen({ route, navigation }: Props) {
         {['CONFIRMED', 'ONGOING'].includes(booking.status) && partner && (
           <Button
             title="Chat"
-            onPress={() => { selection(); navigation.navigate('Chat', { bookingId: booking.id, participantName: `${partner.firstName} ${partner.lastName}`, participantPhoto: (partner as any).profilePhoto }); }}
+            onPress={() => { selection(); navigation.navigate('Chat', { bookingId: booking.id, participantId: (partner as any).id, participantName: `${partner.firstName} ${partner.lastName}`, participantPhoto: (partner as any).profilePhoto }); }}
             variant="secondary"
             icon={<Ionicons name="chatbubble-outline" size={16} color={COLORS.gold} />}
           />

@@ -83,6 +83,11 @@ export default function App() {
     initialize().catch(() => {});
   }, []);
 
+  // Initialize auth state (restore token from SecureStore)
+  useEffect(() => {
+    initialize();
+  }, []);
+
   // Push notifications
   usePushNotifications();
 

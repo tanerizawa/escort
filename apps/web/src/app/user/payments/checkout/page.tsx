@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import api from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { Icon } from '@/components/ui/icon';
-import { WizardShell, WizardStep, StepIndicator, WizardNavigation } from '@/components/ui/wizard';
+import { WizardShell, WizardStep, WizardNavigation } from '@/components/ui/wizard';
 
 interface BookingSummary {
   id: string;
@@ -21,67 +21,56 @@ interface BookingSummary {
 
 const PAYMENT_METHODS = [
   {
-    group: 'Transfer Bank & E-Wallet — DOKU',
-    emoji: '🏦',
+    group: 'Mode Uji Coba',
+    emoji: '🧪',
     methods: [
-      { id: 'doku', name: 'Semua Metode (Pilih di halaman pembayaran)', icon: 'CreditCard' },
-      { id: 'doku_va', name: 'Virtual Account (BCA, BNI, BRI, Mandiri, dll)', icon: 'Landmark' },
-      { id: 'doku_ewallet', name: 'E-Wallet (OVO, DANA, ShopeePay, LinkAja)', icon: 'Smartphone' },
-      { id: 'doku_qris', name: 'QRIS (Scan QR — Semua Bank & E-Wallet)', icon: 'QrCode' },
-    ],
-  },
-  {
-    group: 'Kartu & Gerai — DOKU',
-    emoji: '💳',
-    methods: [
-      { id: 'doku_cc', name: 'Kartu Kredit / Debit (Visa, Mastercard)', icon: 'CreditCard' },
-      { id: 'doku_retail', name: 'Alfamart / Indomaret', icon: 'Store' },
-    ],
-  },
-  {
-    group: 'Cryptocurrency — Fast Payment',
-    emoji: '⚡',
-    methods: [
-      { id: 'crypto', name: 'Semua Crypto (Pilih di halaman pembayaran)', icon: 'Wallet' },
-    ],
-  },
-  {
-    group: 'Stablecoin (Tanpa Volatilitas)',
-    emoji: '🔒',
-    methods: [
-      { id: 'crypto_usdt', name: 'USDT (Tether) — TRC-20 / ERC-20', icon: 'Landmark' },
-    ],
-  },
-  {
-    group: 'Popular Crypto',
-    emoji: '🪙',
-    methods: [
-      { id: 'crypto_eth', name: 'ETH (Ethereum)', icon: 'CreditCard' },
-      { id: 'crypto_btc', name: 'BTC (Bitcoin)', icon: 'CreditCard' },
-      { id: 'crypto_sol', name: 'SOL (Solana) — Ultra Cepat', icon: 'Smartphone' },
-      { id: 'crypto_xrp', name: 'XRP (Ripple) — 3 Detik', icon: 'Smartphone' },
+      { id: 'doku', name: 'Pembayaran Simulasi', icon: 'Shield' },
     ],
   },
 ];
+
+const PAYMENT_METHOD_OPTIONS = PAYMENT_METHODS.flatMap((group) =>
+  group.methods.map((method) => ({
+    ...method,
+    group: group.group,
+    emoji: group.emoji,
+  }))
+);
+
+const DEFAULT_METHOD_KEY = PAYMENT_METHOD_OPTIONS[0]?.id || '';
 
 type PaymentType = 'FULL' | 'DP_50';
 
 const WIZARD_STEPS = [
-  { label: 'Review' },
-  { label: 'Metode' },
+  { label: 'Ringkasan' },
   { label: 'Konfirmasi' },
 ];
 
-/* ── Step 1: Booking Review ── */
-function BookingReviewStep({ booking }: { booking: BookingSummary }) {
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/* ── Step 1: Booking Review + Payment Setup ── */
+function BookingReviewStep({
+  booking,
+  paymentType,
+  setPaymentType,
+  chargeAmount,
+}: {
+  booking: BookingSummary;
+  paymentType: PaymentType;
+  setPaymentType: (t: PaymentType) => void;
+  chargeAmount: number;
+}) {
+  const selectedMethod = PAYMENT_METHOD_OPTIONS[0];
+
   return (
     <div className="space-y-6">
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-400/10">
         <Icon name="ShoppingBag" className="h-8 w-8 text-brand-400" />
       </div>
       <div className="text-center">
-        <h2 className="text-xl font-light text-dark-100">Review Booking</h2>
-        <p className="mt-1 text-sm text-dark-400">Pastikan detail booking Anda sudah benar</p>
+        <h2 className="text-xl font-light text-dark-100">Ringkasan Pembayaran</h2>
+        <p className="mt-1 text-sm text-dark-400">Cek booking lalu pilih jumlah yang ingin dibayar sekarang</p>
       </div>
 
       {/* Escort card */}
@@ -125,40 +114,11 @@ function BookingReviewStep({ booking }: { booking: BookingSummary }) {
         </div>
       </div>
 
-      <WizardNavigation nextLabel="Pilih Metode Pembayaran →" />
-    </div>
-  );
-}
-
-/* ── Step 2: Payment Type & Method ── */
-function PaymentMethodStep({
-  booking,
-  paymentType,
-  setPaymentType,
-  selectedMethodKey,
-  setSelectedMethodKey,
-}: {
-  booking: BookingSummary;
-  paymentType: PaymentType;
-  setPaymentType: (t: PaymentType) => void;
-  selectedMethodKey: string;
-  setSelectedMethodKey: (k: string) => void;
-}) {
-  return (
-    <div className="space-y-6">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-400/10">
-        <Icon name="CreditCard" className="h-8 w-8 text-brand-400" />
-      </div>
-      <div className="text-center">
-        <h2 className="text-xl font-light text-dark-100">Metode Pembayaran</h2>
-        <p className="mt-1 text-sm text-dark-400">Pilih tipe dan metode pembayaran</p>
-      </div>
-
-      {/* Payment type */}
       <div>
-        <p className="mb-3 text-xs font-medium uppercase tracking-wider text-dark-500">Tipe Pembayaran</p>
+        <p className="mb-3 text-xs font-medium uppercase tracking-wider text-dark-500">Pilih Pembayaran</p>
         <div className="grid grid-cols-2 gap-3">
           <button
+            type="button"
             onClick={() => setPaymentType('FULL')}
             className={`rounded-xl border p-4 text-left transition-all ${
               paymentType === 'FULL'
@@ -172,6 +132,7 @@ function PaymentMethodStep({
             <p className="mt-2 text-sm font-semibold text-brand-400">{formatCurrency(booking.totalAmount)}</p>
           </button>
           <button
+            type="button"
             onClick={() => setPaymentType('DP_50')}
             className={`rounded-xl border p-4 text-left transition-all ${
               paymentType === 'DP_50'
@@ -187,47 +148,52 @@ function PaymentMethodStep({
         </div>
       </div>
 
-      {/* Payment methods */}
       <div>
         <p className="mb-3 text-xs font-medium uppercase tracking-wider text-dark-500">Metode Pembayaran</p>
-        <div className="space-y-4">
-          {PAYMENT_METHODS.map((group) => (
-            <div key={group.group}>
-              <p className="mb-2 flex items-center gap-2 text-xs font-medium text-dark-400">
-                <span>{group.emoji}</span> {group.group}
-              </p>
-              <div className="space-y-1.5">
-                {group.methods.map((method) => (
-                  <button
-                    key={method.id}
-                    onClick={() => setSelectedMethodKey(method.id)}
-                    className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all ${
-                      selectedMethodKey === method.id
-                        ? 'border-brand-400 bg-brand-400/5 ring-1 ring-brand-400/20'
-                        : 'border-dark-700/50 hover:border-dark-600'
-                    }`}
-                  >
-                    <Icon name={method.icon} className="h-5 w-5 text-dark-400" />
-                    <span className="flex-1 text-sm text-dark-200">{method.name}</span>
-                    {selectedMethodKey === method.id && (
-                      <svg className="h-5 w-5 text-brand-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
-              </div>
+        <div className="rounded-xl border border-brand-400/20 bg-brand-400/5 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-dark-900/40 text-lg">
+              {selectedMethod?.emoji || '🧪'}
             </div>
-          ))}
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-dark-100">Pembayaran Simulasi</p>
+                <span className="rounded-full border border-brand-400/20 bg-brand-400/10 px-2 py-0.5 text-[10px] text-brand-300">
+                  Aktif
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-dark-400">
+                Saat ini checkout memakai satu metode pembayaran simulasi yang dipilih otomatis agar alurnya tetap sederhana.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <WizardNavigation nextDisabled={!selectedMethodKey} nextLabel="Lanjut ke Konfirmasi →" />
+      <div className="rounded-2xl border border-dark-700/40 bg-dark-800/30 p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-dark-500">Bayar Sekarang</p>
+            <p className="mt-1 text-2xl font-semibold text-brand-400">{formatCurrency(chargeAmount)}</p>
+            <p className="mt-1 text-xs text-dark-500">
+              {paymentType === 'DP_50'
+                ? `Sisa pelunasan ${formatCurrency(Math.round(booking.totalAmount * 0.5))} setelah sesi selesai`
+                : 'Seluruh biaya booking dibayar di muka'}
+            </p>
+          </div>
+          <div className="rounded-xl border border-dark-700/40 bg-dark-900/30 px-3 py-2 text-right">
+            <p className="text-[10px] uppercase tracking-wider text-dark-500">Total Booking</p>
+            <p className="mt-1 text-sm font-medium text-dark-200">{formatCurrency(booking.totalAmount)}</p>
+          </div>
+        </div>
+      </div>
+
+      <WizardNavigation nextLabel="Lanjut ke Konfirmasi →" />
     </div>
   );
 }
 
-/* ── Step 3: Confirm & Pay ── */
+/* ── Step 2: Confirm & Pay ── */
 function ConfirmStep({
   booking,
   paymentType,
@@ -246,12 +212,7 @@ function ConfirmStep({
   onPay: () => void;
 }) {
   const getMethodName = (key: string) => {
-    for (const group of PAYMENT_METHODS) {
-      for (const m of group.methods) {
-        if (m.id === key) return m.name;
-      }
-    }
-    return key;
+    return PAYMENT_METHOD_OPTIONS.find((method) => method.id === key)?.name || key;
   };
 
   return (
@@ -261,7 +222,7 @@ function ConfirmStep({
       </div>
       <div className="text-center">
         <h2 className="text-xl font-light text-dark-100">Konfirmasi Pembayaran</h2>
-        <p className="mt-1 text-sm text-dark-400">Periksa kembali sebelum melanjutkan</p>
+        <p className="mt-1 text-sm text-dark-400">Satu langkah lagi sebelum proses pembayaran dimulai</p>
       </div>
 
       {/* Summary */}
@@ -293,11 +254,13 @@ function ConfirmStep({
           </div>
           <div className="flex justify-between">
             <span className="text-dark-400">Metode</span>
-            <span className="text-dark-200 text-right max-w-[200px] truncate">{getMethodName(selectedMethodKey)}</span>
+            <span className="text-dark-200 text-right max-w-[200px] truncate">
+              {getMethodName(selectedMethodKey)}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-dark-400">Tipe</span>
-            <span className="text-dark-200">{paymentType === 'DP_50' ? 'DP 50%' : 'Bayar Penuh'}</span>
+            <span className="text-dark-200">{paymentType === 'DP_50' ? 'DP 50% di muka' : 'Bayar penuh 100%'}</span>
           </div>
         </div>
 
@@ -332,7 +295,7 @@ function ConfirmStep({
       />
 
       <p className="text-center text-[10px] text-dark-600">
-        Pembayaran diproses secara aman melalui DOKU & NOWPayments
+        Transaksi ini menggunakan pembayaran simulasi untuk kebutuhan uji coba alur booking
       </p>
     </div>
   );
@@ -344,15 +307,28 @@ export default function PaymentCheckoutPage() {
   const bookingId = searchParams?.get('bookingId');
 
   const [booking, setBooking] = useState<BookingSummary | null>(null);
-  const [selectedMethodKey, setSelectedMethodKey] = useState('');
+  const [selectedMethodKey, setSelectedMethodKey] = useState(DEFAULT_METHOD_KEY);
   const [paymentType, setPaymentType] = useState<PaymentType>('FULL');
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [existingOrderId, setExistingOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (bookingId) loadBooking();
-    else setError('Booking ID tidak ditemukan');
+    if (!bookingId) {
+      setError('Booking ID tidak ditemukan');
+      setLoading(false);
+      return;
+    }
+
+    if (!UUID_REGEX.test(bookingId)) {
+      setError('Format Booking ID tidak valid');
+      setLoading(false);
+      return;
+    }
+
+    loadBooking();
   }, [bookingId]);
 
   const loadBooking = async () => {
@@ -363,18 +339,6 @@ export default function PaymentCheckoutPage() {
         (new Date(b.endTime).getTime() - new Date(b.startTime).getTime()) / (1000 * 60 * 60)
       );
 
-      if (b.status !== 'CONFIRMED') {
-        setError('Booking harus dalam status DIKONFIRMASI untuk melakukan pembayaran');
-        setLoading(false);
-        return;
-      }
-
-      if (b.payment && b.payment.status !== 'PENDING') {
-        setError('Pembayaran sudah diproses untuk booking ini');
-        setLoading(false);
-        return;
-      }
-
       setBooking({
         id: b.id,
         escort: b.escort,
@@ -384,20 +348,32 @@ export default function PaymentCheckoutPage() {
         totalHours: hours,
         totalAmount: Number(b.totalAmount),
       });
+
+      setExistingOrderId(null);
+      setError('');
+
+      if (b.status !== 'CONFIRMED') {
+        setError('Booking harus dalam status DIKONFIRMASI untuk melakukan pembayaran');
+        return;
+      }
+
+      if (b.payment && b.payment.status !== 'PENDING') {
+        const resolvedOrderId = b.payment.paymentGatewayRef || b.payment.gatewayRef || b.payment.id || null;
+        setExistingOrderId(resolvedOrderId);
+        setError(`Pembayaran booking ini sudah berstatus ${b.payment.status}`);
+        return;
+      }
     } catch {
       setError('Booking tidak ditemukan');
+      setBooking(null);
+      setExistingOrderId(null);
     } finally {
       setLoading(false);
     }
   };
 
   const getMethodDetails = (key: string) => {
-    for (const group of PAYMENT_METHODS) {
-      for (const m of group.methods) {
-        if (m.id === key) return m;
-      }
-    }
-    return null;
+    return PAYMENT_METHOD_OPTIONS.find((method) => method.id === key) || null;
   };
 
   const chargeAmount = paymentType === 'DP_50'
@@ -405,18 +381,37 @@ export default function PaymentCheckoutPage() {
     : (booking?.totalAmount || 0);
 
   const handlePay = async () => {
-    if (!selectedMethodKey || !booking) return;
+    if (!selectedMethodKey || !booking || processing) return;
     setProcessing(true);
-    setError('');
+    setSubmitError('');
 
     const methodDetail = getMethodDetails(selectedMethodKey);
     if (!methodDetail) {
-      setError('Metode pembayaran tidak valid');
+      setSubmitError('Metode pembayaran tidak valid');
       setProcessing(false);
       return;
     }
 
     try {
+      // Revalidate booking/payment state to prevent stale-tab payment attempts.
+      const latest = await api.get(`/bookings/${booking.id}`);
+      const latestBooking = latest.data?.data || latest.data;
+      if (latestBooking?.status !== 'CONFIRMED') {
+        setSubmitError('Status booking berubah. Booking harus dikonfirmasi sebelum pembayaran.');
+        setProcessing(false);
+        return;
+      }
+      if (latestBooking?.payment && latestBooking.payment.status !== 'PENDING') {
+        const resolvedOrderId = latestBooking.payment.paymentGatewayRef || latestBooking.payment.gatewayRef || latestBooking.payment.id;
+        setSubmitError(`Pembayaran sudah berstatus ${latestBooking.payment.status}.`);
+        if (resolvedOrderId) {
+          router.push(`/user/payments/status?order_id=${encodeURIComponent(resolvedOrderId)}`);
+          return;
+        }
+        setProcessing(false);
+        return;
+      }
+
       const payload: Record<string, string> = {
         bookingId: booking.id,
         method: methodDetail.id,
@@ -429,10 +424,11 @@ export default function PaymentCheckoutPage() {
       if (data?.gateway?.redirectUrl || data?.gateway?.invoiceUrl) {
         window.location.href = data.gateway.redirectUrl || data.gateway.invoiceUrl;
       } else {
-        router.push(`/user/payments/status?order_id=${data?.gateway?.orderId || booking.id}`);
+        const orderId = data?.gateway?.orderId || data?.paymentGatewayRef || data?.id || booking.id;
+        router.push(`/user/payments/status?order_id=${encodeURIComponent(orderId)}`);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Gagal memproses pembayaran');
+      setSubmitError(err.response?.data?.message || 'Gagal memproses pembayaran');
       setProcessing(false);
     }
   };
@@ -456,6 +452,29 @@ export default function PaymentCheckoutPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="mx-auto max-w-lg py-10">
+        <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-5 text-center">
+          <p className="text-sm text-yellow-300">{error}</p>
+          <div className="mt-5 flex flex-col gap-2">
+            {existingOrderId && (
+              <Button onClick={() => router.push(`/user/payments/status?order_id=${encodeURIComponent(existingOrderId)}`)}>
+                Lihat Status Pembayaran
+              </Button>
+            )}
+            <Button variant="ghost" onClick={() => router.push(`/user/bookings/${booking.id}`)}>
+              Kembali ke Detail Booking
+            </Button>
+            <Button variant="ghost" onClick={() => router.push('/user/bookings')}>
+              Lihat Semua Booking
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-lg">
       <nav className="mb-6 text-sm text-dark-500">
@@ -466,38 +485,27 @@ export default function PaymentCheckoutPage() {
         <span className="text-dark-300">Pembayaran</span>
       </nav>
 
-      <WizardShell totalSteps={3}>
-        {({ currentStep }) => (
-          <>
-            <StepIndicator steps={WIZARD_STEPS} current={currentStep} className="mb-8" />
+      <WizardShell steps={WIZARD_STEPS} totalSteps={2}>
+        <WizardStep step={0}>
+          <BookingReviewStep
+            booking={booking}
+            paymentType={paymentType}
+            setPaymentType={setPaymentType}
+            chargeAmount={chargeAmount}
+          />
+        </WizardStep>
 
-            <WizardStep step={0}>
-              <BookingReviewStep booking={booking} />
-            </WizardStep>
-
-            <WizardStep step={1}>
-              <PaymentMethodStep
-                booking={booking}
-                paymentType={paymentType}
-                setPaymentType={setPaymentType}
-                selectedMethodKey={selectedMethodKey}
-                setSelectedMethodKey={setSelectedMethodKey}
-              />
-            </WizardStep>
-
-            <WizardStep step={2}>
-              <ConfirmStep
-                booking={booking}
-                paymentType={paymentType}
-                selectedMethodKey={selectedMethodKey}
-                chargeAmount={chargeAmount}
-                processing={processing}
-                error={error}
-                onPay={handlePay}
-              />
-            </WizardStep>
-          </>
-        )}
+        <WizardStep step={1}>
+          <ConfirmStep
+            booking={booking}
+            paymentType={paymentType}
+            selectedMethodKey={selectedMethodKey}
+            chargeAmount={chargeAmount}
+            processing={processing}
+            error={submitError}
+            onPay={handlePay}
+          />
+        </WizardStep>
       </WizardShell>
     </div>
   );

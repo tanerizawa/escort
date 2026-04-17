@@ -7,7 +7,8 @@ import { TransactionScreen } from './TransactionScreen';
 import { formatCurrency } from '@/lib/utils';
 import { CircleDot, Lock, User } from 'lucide-react';
 
-const POLL_INTERVAL_MS = 10_000;
+const POLL_INTERVAL_MS = 30_000;
+const TRANSACTION_BANNER_OFFSET = 'calc(5.5rem + env(safe-area-inset-bottom))';
 
 interface TransactionLockProviderProps {
   children: React.ReactNode;
@@ -20,9 +21,30 @@ export function TransactionLockProvider({ children }: TransactionLockProviderPro
   const [showFullScreen, setShowFullScreen] = useState(false);
 
   useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const hasDockBanner = Boolean(isLocked && booking && !showFullScreen);
+    const offset = hasDockBanner ? TRANSACTION_BANNER_OFFSET : '0px';
+
+    document.documentElement.style.setProperty('--tx-banner-offset', offset);
+    document.body.style.paddingBottom = offset;
+
+    return () => {
+      document.documentElement.style.setProperty('--tx-banner-offset', '0px');
+      document.body.style.paddingBottom = '0px';
+    };
+  }, [isLocked, booking?.id, showFullScreen]);
+
+  useEffect(() => {
     if (!isAuthenticated || !user) return;
-    checkActive();
-    intervalRef.current = setInterval(() => { checkActive(); }, POLL_INTERVAL_MS);
+    const runCheck = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      checkActive();
+    };
+
+    runCheck();
+    intervalRef.current = setInterval(runCheck, POLL_INTERVAL_MS);
     return () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
   }, [isAuthenticated, user?.id]);
 
@@ -34,20 +56,20 @@ export function TransactionLockProvider({ children }: TransactionLockProviderPro
 
       {/* ── Floating Transaction Banner ── */}
       {isLocked && booking && !showFullScreen && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-brand-400/20 bg-dark-900/95 backdrop-blur-xl shadow-[0_-4px_24px_rgba(0,0,0,0.4)]">
-          <div className="mx-auto max-w-4xl px-4 py-3">
+        <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-40">
+          <div className="mx-auto max-w-4xl px-4 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
             <button
               onClick={() => setShowFullScreen(true)}
-              className="w-full flex items-center gap-3 text-left group"
+              className="pointer-events-auto w-full flex items-center gap-3 rounded-2xl border border-brand-400/20 bg-dark-900/95 px-4 py-2.5 text-left shadow-[0_8px_28px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-colors hover:bg-dark-900 group"
             >
               {/* Status indicator */}
               <div className="relative shrink-0">
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${
+                <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${
                   booking.status === 'ONGOING'
                     ? 'bg-green-500/10 border border-green-500/30'
                     : 'bg-brand-400/10 border border-brand-400/30'
                 }`}>
-                  {booking.status === 'ONGOING' ? <CircleDot className="h-5 w-5 text-green-400" /> : <Lock className="h-5 w-5 text-brand-400" />}
+                  {booking.status === 'ONGOING' ? <CircleDot className="h-4 w-4 text-green-400" /> : <Lock className="h-4 w-4 text-brand-400" />}
                 </div>
                 {booking.status === 'ONGOING' && (
                   <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 animate-pulse border-2 border-dark-900" />
@@ -57,7 +79,7 @@ export function TransactionLockProvider({ children }: TransactionLockProviderPro
               {/* Booking info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-medium text-white truncate">
+                  <h3 className="text-[13px] font-medium text-white truncate">
                     {booking.status === 'ONGOING' ? 'Transaksi Berlangsung' : 'Siap Check-in'}
                   </h3>
                   <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium ${
@@ -73,7 +95,7 @@ export function TransactionLockProvider({ children }: TransactionLockProviderPro
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-dark-400 truncate mt-0.5">
+                <p className="text-[11px] text-dark-400 truncate mt-0.5">
                   <User className="h-4 w-4 inline-block" /> {isClient
                     ? `${booking.escort?.firstName || ''} ${booking.escort?.lastName || ''}`.trim()
                     : `${booking.client?.firstName || ''} ${booking.client?.lastName || ''}`.trim()
@@ -87,10 +109,10 @@ export function TransactionLockProvider({ children }: TransactionLockProviderPro
 
               {/* Open button */}
               <div className="shrink-0 flex items-center gap-2">
-                <span className="hidden sm:block text-[11px] uppercase tracking-widest text-brand-400 group-hover:text-brand-300 transition-colors">
+                <span className="hidden sm:block text-[10px] uppercase tracking-widest text-brand-400 group-hover:text-brand-300 transition-colors">
                   Buka
                 </span>
-                <div className="h-8 w-8 rounded-lg bg-brand-400/10 flex items-center justify-center text-brand-400 group-hover:bg-brand-400/20 transition-colors">
+                <div className="h-7 w-7 rounded-md bg-brand-400/10 flex items-center justify-center text-brand-400 group-hover:bg-brand-400/20 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
                   </svg>

@@ -43,6 +43,11 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "discover": "Discover",
+    "preferences": "Preferences",
+    "hallOfFame": "Hall of Fame",
+    "gallery": "Gallery",
+    "contest": "Contest",
     "escorts": "Find Partner",
     "bookings": "Bookings",
     "payments": "Payments",

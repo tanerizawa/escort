@@ -212,14 +212,14 @@ export default function AdminSettingsPage() {
               {activeSection === 'notifications' && (
                 <div className="space-y-6">
                   <h2 className="text-lg font-light text-dark-100">Notification Settings</h2>
-                  <p className="text-sm text-dark-400">Konfigurasi notifikasi akan tersedia di Phase 6</p>
+                  <p className="text-sm text-dark-400">Konfigurasi notifikasi dikelola melalui environment variables (Firebase FCM, Brevo SMTP, Twilio WhatsApp). Lihat Runbook untuk detail.</p>
                 </div>
               )}
 
               {activeSection === 'security' && (
                 <div className="space-y-6">
                   <h2 className="text-lg font-light text-dark-100">Security Settings</h2>
-                  <p className="text-sm text-dark-400">Konfigurasi keamanan akan tersedia di Phase 8</p>
+                  <p className="text-sm text-dark-400">Konfigurasi keamanan dikelola melalui environment variables (JWT secrets, encryption keys, rate limits). Lihat Runbook untuk detail.</p>
                 </div>
               )}
 

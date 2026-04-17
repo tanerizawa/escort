@@ -22,6 +22,51 @@ const clientNavItems: NavItem[] = [
     ),
   },
   {
+    href: '/user/discover',
+    labelKey: 'nav.discover',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M10 2a8 8 0 00-5.657 13.657l-1.95 1.95a1 1 0 101.414 1.414l1.95-1.95A8 8 0 1010 2zm0 2a6 6 0 110 12 6 6 0 010-12z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+  {
+    href: '/user/preferences',
+    labelKey: 'nav.preferences',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M11.983 1.904a1 1 0 00-1.966 0l-.163.98a6.993 6.993 0 00-1.63.67l-.812-.567a1 1 0 00-1.303.112L4.74 4.467a1 1 0 00-.112 1.303l.567.812a6.993 6.993 0 00-.67 1.63l-.98.163a1 1 0 000 1.966l.98.163c.146.57.37 1.114.67 1.63l-.567.812a1 1 0 00.112 1.303l1.369 1.369a1 1 0 001.303.112l.812-.567c.516.3 1.06.524 1.63.67l.163.98a1 1 0 001.966 0l.163-.98a6.993 6.993 0 001.63-.67l.812.567a1 1 0 001.303-.112l1.369-1.369a1 1 0 00.112-1.303l-.567-.812c.3-.516.524-1.06.67-1.63l.98-.163a1 1 0 000-1.966l-.98-.163a6.993 6.993 0 00-.67-1.63l.567-.812a1 1 0 00-.112-1.303L15.89 3.099a1 1 0 00-1.303-.112l-.812.567a6.993 6.993 0 00-1.63-.67l-.163-.98zM11 10a1 1 0 11-2 0 1 1 0 012 0zm-3 0a3 3 0 116 0 3 3 0 01-6 0z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+  {
+    href: '/user/hall-of-fame',
+    labelKey: 'nav.hallOfFame',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path d="M4 3a1 1 0 00-1 1v3a5 5 0 004 4.9V15H6a1 1 0 000 2h8a1 1 0 100-2h-1v-3.1A5 5 0 0017 7V4a1 1 0 00-1-1H4zm1 2h10v2a3 3 0 11-6 0 1 1 0 00-2 0 3 3 0 11-2 0V5z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/user/gallery',
+    labelKey: 'nav.gallery',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm11 3a1 1 0 110 2 1 1 0 010-2zM4 13l3.5-3.5a1 1 0 011.414 0L11 11.586l1.086-1.086a1 1 0 011.414 0L16 13v2H4v-2z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/user/contest',
+    labelKey: 'nav.contest',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v2a4 4 0 004 4h1v2.586l-1.707 1.707A1 1 0 006 18h8a1 1 0 00.707-1.707L13 14.586V12h1a4 4 0 004-4V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+  {
     href: '/user/escorts',
     labelKey: 'nav.escorts',
     icon: (

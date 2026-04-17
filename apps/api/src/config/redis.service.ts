@@ -40,6 +40,18 @@ export class RedisService {
     return this.redis.incr(key);
   }
 
+  /**
+   * Set key only if it doesn't exist (NX). Returns true if set, false if already exists.
+   */
+  async setNX(key: string, value: string, ttlSeconds?: number): Promise<boolean> {
+    if (ttlSeconds) {
+      const result = await this.redis.set(key, value, 'EX', ttlSeconds, 'NX');
+      return result === 'OK';
+    }
+    const result = await this.redis.setnx(key, value);
+    return result === 1;
+  }
+
   async keys(pattern: string): Promise<string[]> {
     return this.redis.keys(pattern);
   }

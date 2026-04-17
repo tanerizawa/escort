@@ -97,10 +97,12 @@ export class AuthController {
   }
 
   @Post('verify-email')
+  @Throttle({ short: { ttl: 60000, limit: 5 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify email with token or code' })
   @ApiResponse({ status: 200, description: 'Email verified successfully' })
   @ApiResponse({ status: 400, description: 'Invalid token or code' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
   async verifyEmail(@Body() body: { token?: string; code?: string; userId?: string }) {
     return this.authService.verifyEmail(body.token, body.code, body.userId);
   }

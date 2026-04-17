@@ -25,9 +25,11 @@ export function NotificationBell() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const setUser = useAuthStore((s) => s.setUser);
 
   useEffect(() => {
-    if (!user) {
+    if (!isAuthenticated || !user) {
       setUnreadCount(0);
       return;
     }
@@ -39,7 +41,30 @@ export function NotificationBell() {
         intervalRef.current = null;
       }
     };
-  }, [user]);
+  }, [isAuthenticated, user?.id]);
+
+  const getAuthConfig = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    if (!token) return null;
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
+  };
+
+  const clearAuthState = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+    }
+    setUser(null);
+    setUnreadCount(0);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -53,18 +78,18 @@ export function NotificationBell() {
 
   const loadUnreadCount = async () => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-      if (!token) {
+      const authConfig = getAuthConfig();
+      if (!authConfig) {
         if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+        setUnreadCount(0);
         return;
       }
-      const res = await api.get('/notifications/unread-count');
+      const res = await api.get('/notifications/unread-count', authConfig);
       const d = res.data?.data || res.data;
       setUnreadCount(d?.count || 0);
     } catch (err: any) {
       if (err?.response?.status === 401 || err?.message === 'No refresh token') {
-        if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-        setUnreadCount(0);
+        clearAuthState();
       }
     }
   };
@@ -72,11 +97,18 @@ export function NotificationBell() {
   const loadNotifications = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/notifications', { params: { limit: 10 } });
+      const authConfig = getAuthConfig();
+      if (!authConfig) {
+        setNotifications([]);
+        return;
+      }
+      const res = await api.get('/notifications', { ...authConfig, params: { limit: 10 } });
       const payload = res.data?.data || res.data;
       setNotifications(Array.isArray(payload) ? payload : (payload?.data || []));
-    } catch {
-      // silent
+    } catch (err: any) {
+      if (err?.response?.status === 401 || err?.message === 'No refresh token') {
+        clearAuthState();
+      }
     } finally {
       setLoading(false);
     }
@@ -91,23 +123,31 @@ export function NotificationBell() {
 
   const handleMarkAsRead = async (id: string) => {
     try {
-      await api.patch(`/notifications/${id}/read`);
+      const authConfig = getAuthConfig();
+      if (!authConfig) return;
+      await api.patch(`/notifications/${id}/read`, undefined, authConfig);
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch {
-      // silent
+    } catch (err: any) {
+      if (err?.response?.status === 401 || err?.message === 'No refresh token') {
+        clearAuthState();
+      }
     }
   };
 
   const handleMarkAllAsRead = async () => {
     try {
-      await api.patch('/notifications/read-all');
+      const authConfig = getAuthConfig();
+      if (!authConfig) return;
+      await api.patch('/notifications/read-all', undefined, authConfig);
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
-    } catch {
-      // silent
+    } catch (err: any) {
+      if (err?.response?.status === 401 || err?.message === 'No refresh token') {
+        clearAuthState();
+      }
     }
   };
 

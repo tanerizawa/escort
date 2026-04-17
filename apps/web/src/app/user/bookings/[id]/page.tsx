@@ -261,18 +261,22 @@ export default function BookingDetailPage() {
               <div className="flex-1">
                 <h3 className="text-base font-medium text-dark-100">Pembayaran Diperlukan</h3>
                 <p className="mt-1 text-sm text-dark-400">
-                  Escort telah mengkonfirmasi booking Anda. Silakan lakukan pembayaran untuk melanjutkan.
-                  Anda dapat memilih <strong className="text-dark-200">bayar penuh (100%)</strong> atau <strong className="text-dark-200">DP 50%</strong> di muka.
+                  Escort telah mengkonfirmasi booking Anda. Selesaikan pembayaran untuk mengunci jadwal dan melanjutkan ke sesi berikutnya.
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <Link href={`/user/payments/checkout?bookingId=${booking.id}`}>
                     <Button className="gap-2">
-                      Bayar Sekarang — {formatCurrency(Number(booking.totalAmount))}
+                      Bayar Booking
                     </Button>
                   </Link>
-                  <span className="text-xs text-dark-500">
-                    Minimal DP 50%: {formatCurrency(Math.round(Number(booking.totalAmount) * 0.5))}
-                  </span>
+                </div>
+                <div className="mt-3 grid gap-2 text-xs text-dark-500 sm:grid-cols-2">
+                  <div className="rounded-lg border border-dark-700/40 bg-dark-900/30 px-3 py-2">
+                    Bayar penuh: {formatCurrency(Number(booking.totalAmount))}
+                  </div>
+                  <div className="rounded-lg border border-dark-700/40 bg-dark-900/30 px-3 py-2">
+                    DP 50%: {formatCurrency(Math.round(Number(booking.totalAmount) * 0.5))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -425,15 +429,6 @@ export default function BookingDetailPage() {
       <Card className="mt-6">
         <CardContent className="py-4">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Client: Pay button when CONFIRMED and unpaid */}
-            {isClient && needsPayment && (
-              <Link href={`/user/payments/checkout?bookingId=${booking.id}`}>
-                <Button className="gap-2">
-                  <CreditCard className="h-4 w-4 inline-block" /> Bayar Sekarang
-                </Button>
-              </Link>
-            )}
-
             {/* Client: Cancel booking */}
             {isClient && (booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
               <Button variant="outline" onClick={() => {

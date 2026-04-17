@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '@/components/admin-layout';
+import api from '@/lib/api';
 
 interface Incident {
   id: string;
@@ -65,23 +66,17 @@ export default function AdminIncidentsPage() {
         ...(typeFilter ? { type: typeFilter } : {}),
       });
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/incidents?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` },
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        const payload = json.data || json;
-        const list = payload?.data || payload;
-        setIncidents(Array.isArray(list) ? list : []);
-        setPagination((prev) => ({
-          ...prev,
-          total: payload?.pagination?.total || payload?.total || 0,
-          totalPages: payload?.pagination?.totalPages || payload?.totalPages || 0,
-        }));
-      }
+      const { data: json } = await api.get(`/admin/incidents?${params}`);
+      const payload = json.data || json;
+      const list = payload?.data || payload;
+      setIncidents(Array.isArray(list) ? list : []);
+      setPagination((prev) => ({
+        ...prev,
+        total: payload?.pagination?.total || payload?.total || 0,
+        totalPages: payload?.pagination?.totalPages || payload?.totalPages || 0,
+      }));
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Gagal memuat data insiden');
+      setError(err?.response?.data?.message || err?.message || 'Gagal memuat data insiden');
     } finally {
       setLoading(false);
     }
@@ -95,27 +90,12 @@ export default function AdminIncidentsPage() {
     if (!adminNotes.trim()) return;
     setResolving(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/incidents/${incidentId}/resolve`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-          },
-          body: JSON.stringify({ adminNotes }),
-        },
-      );
-
-      if (res.ok) {
-        setSelectedIncident(null);
-        setAdminNotes('');
-        fetchIncidents();
-      } else {
-        setError('Gagal menyelesaikan insiden');
-      }
+      await api.patch(`/admin/incidents/${incidentId}/resolve`, { adminNotes });
+      setSelectedIncident(null);
+      setAdminNotes('');
+      fetchIncidents();
     } catch (err: any) {
-      setError(err?.message || 'Gagal menyelesaikan insiden');
+      setError(err?.response?.data?.message || err?.message || 'Gagal menyelesaikan insiden');
     } finally {
       setResolving(false);
     }

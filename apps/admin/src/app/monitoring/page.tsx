@@ -121,7 +121,7 @@ export default function MonitoringPage() {
   const getLocationAge = (timestamp: number | undefined) => {
     if (!timestamp) return 'offline';
     const ageSec = Math.floor((Date.now() - timestamp) / 1000);
-    if (ageSec < 60) return `${ageSec}d lalu`;
+    if (ageSec < 60) return `${ageSec}s lalu`;
     if (ageSec < 3600) return `${Math.floor(ageSec / 60)}m lalu`;
     return `${Math.floor(ageSec / 3600)}j lalu`;
   };

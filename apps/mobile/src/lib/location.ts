@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react';
 import * as Location from 'expo-location';
 import api from './api';
+import { useBookingStore } from '../stores/booking';
 
 const UPDATE_INTERVAL = 30000; // 30 seconds
 
 export function useLocationTracker(enabled: boolean) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeBookings = useBookingStore((s) => s.activeBookings);
 
   useEffect(() => {
     if (!enabled) {
@@ -23,10 +25,26 @@ export function useLocationTracker(enabled: boolean) {
             const loc = await Location.getCurrentPositionAsync({
               accuracy: Location.Accuracy.Balanced,
             });
-            await api.post('/safety/location', {
+            const payload = {
               lat: loc.coords.latitude,
               lng: loc.coords.longitude,
-            });
+              accuracy: loc.coords.accuracy,
+            };
+
+            // General GPS ping (no booking required)
+            await api.post('/safety/location/ping', payload).catch(() => {});
+
+            // Send per-booking location for active bookings
+            const active = activeBookings.filter((b) =>
+              ['CONFIRMED', 'ONGOING'].includes(b.status),
+            );
+            if (active.length > 0) {
+              await Promise.allSettled(
+                active.map((b) =>
+                  api.post('/safety/location', { bookingId: b.id, ...payload }),
+                ),
+              );
+            }
           } catch { /* ignore */ }
         };
 
@@ -40,5 +58,5 @@ export function useLocationTracker(enabled: boolean) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [enabled]);
+  }, [enabled, activeBookings]);
 }

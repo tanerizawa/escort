@@ -40,10 +40,11 @@ export function HomeScreen() {
   const [greetingKey, setGreetingKey] = useState(0);
   const { selection } = useHaptic();
 
-  const fetchEscorts = useCallback(async (pageNum = 1, refresh = false) => {
+  const fetchEscorts = useCallback(async (pageNum = 1, refresh = false, searchOverride?: string) => {
     try {
+      const searchVal = searchOverride !== undefined ? searchOverride : search;
       const params: any = { page: pageNum, limit: 10 };
-      if (search.trim()) params.search = search.trim();
+      if (searchVal.trim()) params.search = searchVal.trim();
       if (selectedTier !== 'ALL') params.tier = selectedTier;
       const { data } = await api.get('/escorts', { params });
       const items = data.data?.data || data.data || [];
@@ -104,7 +105,7 @@ export function HomeScreen() {
               accessibilityHint="Ketik nama atau keahlian untuk mencari"
             />
             {search.length > 0 && (
-              <TouchableOpacity onPress={() => { setSearch(''); handleSearch(); }}>
+              <TouchableOpacity onPress={() => { setSearch(''); setLoading(true); fetchEscorts(1, true, ''); }}>
                 <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
               </TouchableOpacity>
             )}

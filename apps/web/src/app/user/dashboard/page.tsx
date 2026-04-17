@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
 import api from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { WelcomeTour } from '@/components/onboarding/welcome-tour';
-import { Award, Calendar, Check, ClipboardList, Gem, Heart, Search, Sparkles, Star, Trophy, Unlock, User } from 'lucide-react';
+import { Award, Calendar, Check, ClipboardList, Gem, Heart, MessageCircle, RefreshCw, Search, Sparkles, Star, Trophy, Unlock, User } from 'lucide-react';
 import { Icon } from '@/components/ui/icon';
 
 const statusConfig: Record<string, { label: string; variant: 'warning' | 'info' | 'brand' | 'success' | 'danger' }> = {
@@ -40,6 +40,9 @@ function getNextTier(totalBookings: number) {
   return null;
 }
 
+const formatServiceType = (type: string) =>
+  type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
 interface BookingSummary {
   id: string;
   status: string;
@@ -56,17 +59,21 @@ export default function ClientDashboard() {
   const [kycStatus, setKycStatus] = useState<string>('NONE');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
-
-  const loadDashboard = async () => {
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
     try {
-      const [bookingsRes, favoritesRes, reviewsRes, kycRes] = await Promise.allSettled([
+      const [
+        bookingsRes,
+        favoritesRes,
+        reviewsRes,
+        kycRes,
+        activeRes,
+      ] = await Promise.allSettled([
         api.get('/bookings', { params: { limit: 5 } }),
         api.get('/favorites'),
         api.get('/reviews/mine', { params: { limit: 1 } }).catch(() => ({ data: { data: { pagination: { total: 0 } } } })),
         api.get('/kyc/status'),
+        api.get('/bookings/active'),
       ]);
 
       if (kycRes.status === 'fulfilled') {
@@ -76,16 +83,19 @@ export default function ClientDashboard() {
 
       let allBookings: BookingSummary[] = [];
       let totalBookings = 0;
-      let activeBookings = 0;
 
       if (bookingsRes.status === 'fulfilled') {
         const payload = bookingsRes.value.data?.data || bookingsRes.value.data;
         allBookings = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
         totalBookings = payload?.pagination?.total || payload?.total || allBookings.length;
-        activeBookings = allBookings.filter(
-          (b: BookingSummary) => ['PENDING', 'CONFIRMED', 'ONGOING'].includes(b.status)
-        ).length;
         setRecentBookings(allBookings.slice(0, 5));
+      }
+
+      // Avoid burst calls that can hit rate-limits; active endpoint returns aggregated active count
+      let activeBookings = 0;
+      if (activeRes.status === 'fulfilled') {
+        const activePayload = activeRes.value.data?.data || activeRes.value.data;
+        activeBookings = activePayload?.active ? Number(activePayload?.totalActive || 0) : 0;
       }
 
       let favCount = 0;
@@ -125,7 +135,11 @@ export default function ClientDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
 
   const formatCurrency = (amount: number) =>
     `Rp ${amount.toLocaleString('id-ID')}`;
@@ -159,18 +173,26 @@ export default function ClientDashboard() {
               Selamat datang di dashboard Anda
             </p>
           </div>
-          {!loading && (
-            <div className="flex items-center gap-2">
-              {user?.isVerified && (
-                <span className="border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-400">
-                  <Check className="h-4 w-4 inline-block" /> Verified
-                </span>
-              )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={loadDashboard}
+              disabled={loading}
+              aria-label="Refresh dashboard"
+              className="flex h-8 w-8 items-center justify-center border border-dark-700/20 bg-dark-800/30 text-dark-500 transition-all hover:border-brand-400/20 hover:text-brand-400 disabled:opacity-40"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            {!loading && user?.isVerified && (
+              <span className="border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-400">
+                <Check className="h-4 w-4 inline-block" /> Verified
+              </span>
+            )}
+            {!loading && (
               <span className={`border px-3 py-1 text-xs font-medium ${currentTier.color}`}>
                 <Icon name={currentTier.icon} className="h-4 w-4 inline-block" /> {currentTier.name}
               </span>
-            </div>
-          )}
+            )}
+          </div>
         </div>
         {/* Gold line divider */}
         <div className="mt-4 h-px bg-gradient-to-r from-brand-400/30 via-brand-400/10 to-transparent" />
@@ -180,7 +202,7 @@ export default function ClientDashboard() {
       {!loading && !user?.isVerified && kycStatus !== 'PENDING' && kycStatus !== 'IN_REVIEW' && (
         <div className="mb-6 flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/5 px-5 py-4">
           <div className="flex items-center gap-3">
-            <Unlock className="h-6 w-6" />
+            <Unlock className="h-6 w-6 text-amber-400" />
             <div>
               <p className="text-sm font-medium text-dark-200">Akun Belum Terverifikasi</p>
               <p className="text-xs text-dark-500">Verifikasi identitas untuk akses penuh & keamanan akun</p>
@@ -226,10 +248,10 @@ export default function ClientDashboard() {
       {/* Quick Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: 'Total Booking', value: loading ? '—' : stats.total.toLocaleString('id-ID'), icon: 'ClipboardList', gradient: 'from-brand-400/10 to-amber-400/5', accent: 'bg-brand-400' },
-          { label: 'Booking Aktif', value: loading ? '—' : stats.active.toLocaleString('id-ID'), icon: 'Sparkles', gradient: 'from-violet-400/10 to-blue-400/5', accent: 'bg-violet-400' },
-          { label: 'Ulasan Diberikan', value: loading ? '—' : stats.reviews.toLocaleString('id-ID'), icon: 'Star', gradient: 'from-amber-400/10 to-orange-400/5', accent: 'bg-amber-400' },
-          { label: 'Partner Favorit', value: loading ? '—' : stats.favorites.toLocaleString('id-ID'), icon: 'Heart', gradient: 'from-rose-400/10 to-pink-400/5', accent: 'bg-rose-400' },
+          { label: 'Total Booking', value: stats.total.toLocaleString('id-ID'), icon: 'ClipboardList', gradient: 'from-brand-400/10 to-amber-400/5', accent: 'bg-brand-400' },
+          { label: 'Booking Aktif', value: stats.active.toLocaleString('id-ID'), icon: 'Sparkles', gradient: 'from-violet-400/10 to-blue-400/5', accent: 'bg-violet-400' },
+          { label: 'Ulasan Diberikan', value: stats.reviews.toLocaleString('id-ID'), icon: 'Star', gradient: 'from-amber-400/10 to-orange-400/5', accent: 'bg-amber-400' },
+          { label: 'Partner Favorit', value: stats.favorites.toLocaleString('id-ID'), icon: 'Heart', gradient: 'from-rose-400/10 to-pink-400/5', accent: 'bg-rose-400' },
         ].map((stat) => (
           <div key={stat.label} className="group relative overflow-hidden border border-dark-700/20 bg-dark-800/30 p-5 transition-all duration-500 hover:border-brand-400/15">
             {/* Background gradient art */}
@@ -244,7 +266,11 @@ export default function ClientDashboard() {
                 <p className="text-[10px] font-medium uppercase tracking-widest-2 text-dark-500">
                   {stat.label}
                 </p>
-                <p className="mt-2 font-display text-3xl font-light text-gradient-gold">{stat.value}</p>
+                {loading ? (
+                  <div className="mt-2 h-8 w-16 animate-pulse rounded bg-dark-700/40" />
+                ) : (
+                  <p className="mt-2 font-display text-3xl font-light text-gradient-gold">{stat.value}</p>
+                )}
               </div>
               <div className="flex h-12 w-12 items-center justify-center border border-dark-700/20 bg-dark-800/40 transition-all duration-500 group-hover:border-brand-400/15">
                 <Icon name={stat.icon} className="h-5 w-5 text-brand-400/60 transition-colors group-hover:text-brand-400" />
@@ -286,11 +312,19 @@ export default function ClientDashboard() {
               image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&q=60&auto=format',
               gradient: 'from-rose-400/15 to-pink-500/10',
             },
+            {
+              href: '/user/chat',
+              icon: MessageCircle,
+              title: 'Pesan & Chat',
+              desc: 'Lihat percakapan dan koordinasi dengan partner Anda',
+              image: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400&q=60&auto=format',
+              gradient: 'from-teal-400/15 to-emerald-500/10',
+            },
           ].map((action) => (
             <Link key={action.href} href={action.href} className="group relative block overflow-hidden border border-dark-700/20 bg-dark-800/30 transition-all duration-500 hover:border-brand-400/20">
               {/* Background image — subtle */}
               <div className="absolute inset-0">
-                <img src={action.image} alt="" className="h-full w-full object-cover opacity-[0.06] transition-opacity duration-700 group-hover:opacity-[0.12]" loading="lazy" />
+                <img src={action.image} alt="" aria-hidden="true" className="h-full w-full object-cover opacity-[0.06] transition-opacity duration-700 group-hover:opacity-[0.12]" loading="lazy" />
                 <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 transition-opacity duration-500 group-hover:opacity-100`} />
               </div>
               
@@ -361,12 +395,23 @@ export default function ClientDashboard() {
                             {cfg && <Badge variant={cfg.variant}>{cfg.label}</Badge>}
                           </div>
                           <p className="mt-1 text-xs text-dark-500">
-                            {booking.serviceType} — {formatDate(booking.startTime)}
+                            {formatServiceType(booking.serviceType)} — {formatDate(booking.startTime)}
                           </p>
                         </div>
-                        <p className="text-sm font-medium text-brand-400">
-                          {formatCurrency(Number(booking.totalAmount) || 0)}
-                        </p>
+                        <div className="flex flex-col items-end gap-1.5">
+                          <p className="text-sm font-medium text-brand-400">
+                            {formatCurrency(Number(booking.totalAmount) || 0)}
+                          </p>
+                          {booking.status === 'COMPLETED' && (
+                            <Link
+                              href={`/user/bookings/${booking.id}/review`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[10px] font-medium text-amber-400/80 hover:text-amber-400 underline underline-offset-2 transition-colors"
+                            >
+                              Beri Ulasan
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

@@ -1,19 +1,21 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Pressable, Image,
+  KeyboardAvoidingView, Platform, Pressable, Image, Linking,
 } from 'react-native';
 import Animated, { FadeIn, ZoomIn, FadeInDown, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { COLORS, SPACING, RADIUS, SHADOWS, TIER_COLORS, resolvePhotoUrl } from '../../constants/theme';
 import { TypingIndicator } from '../../components/ui/ChatBubble';
 import { BadgePill } from '../../components/ui/BadgePill';
 import { ChatMessage } from '../../constants/types';
 import { useAuthStore } from '../../stores/auth';
+import { usePresenceStore } from '../../stores/presence';
 import { useHaptic } from '../../hooks/useHaptic';
-import { getSocket, connectSocket } from '../../lib/socket';
+import { getSocket } from '../../lib/socket';
 import api from '../../lib/api';
 import Toast from 'react-native-toast-message';
 import dayjs from 'dayjs';
@@ -42,15 +44,24 @@ const sepStyles = StyleSheet.create({
 });
 
 export function ChatScreen({ route, navigation }: Props) {
-  const { bookingId, participantName, participantPhoto, participantTier } = route.params as any;
+  const { bookingId, participantId, participantName, participantPhoto, participantTier } = route.params as any;
   const user = useAuthStore((s) => s.user);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const { light, selection } = useHaptic();
+  const isParticipantOnline = usePresenceStore((s) => s.isOnline(participantId || ''));
+  const checkOnline = usePresenceStore((s) => s.checkOnline);
+
+  useEffect(() => {
+    if (participantId) {
+      checkOnline(participantId).catch(() => {});
+    }
+  }, [participantId, checkOnline]);
 
   // Custom header
   useEffect(() => {
@@ -68,27 +79,27 @@ export function ChatScreen({ route, navigation }: Props) {
           <View style={headerStyles.info}>
             <View style={headerStyles.nameRow}>
               <Text style={headerStyles.name} numberOfLines={1}>{participantName}</Text>
-              <View style={headerStyles.onlineDot} />
+              <View style={[headerStyles.onlineDot, !isParticipantOnline && headerStyles.offlineDot]} />
             </View>
-            {participantTier && (
-              <Text style={[headerStyles.tier, { color: TIER_COLORS[participantTier] || COLORS.textMuted }]}>
-                {participantTier}
-              </Text>
-            )}
+            <View style={headerStyles.metaRow}>
+              <Text style={headerStyles.statusText}>{isParticipantOnline ? 'Online' : `Booking #${bookingId.slice(0, 8)}`}</Text>
+              {participantTier ? (
+                <Text style={[headerStyles.tier, { color: TIER_COLORS[participantTier] || COLORS.textMuted }]}> 
+                  {participantTier}
+                </Text>
+              ) : null}
+            </View>
           </View>
         </View>
       ),
     });
-  }, [participantName, participantPhoto, participantTier]);
+  }, [participantName, participantPhoto, participantTier, isParticipantOnline, bookingId, navigation]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        // Ensure socket is connected for real-time messaging
-        await connectSocket();
-
-        const { data } = await api.get(`/chat/${bookingId}/messages`);
+        const { data } = await api.get(`/chats/${bookingId}/messages`);
         if (!cancelled) setMessages((data.data?.data || data.data || []).reverse());
       } catch { /* ignore */ } finally {
         if (!cancelled) setLoading(false);
@@ -119,25 +130,13 @@ export function ChatScreen({ route, navigation }: Props) {
     };
   }, [bookingId]);
 
-  const handleSend = useCallback(async () => {
+  const handleSend = useCallback(() => {
     const content = text.trim();
     if (!content) return;
     light();
-    setText('');
-
     const socket = getSocket();
-    if (socket.connected) {
-      socket.emit('send_message', { bookingId, content, type: 'TEXT' });
-    } else {
-      // REST fallback when socket is not connected
-      try {
-        const { data } = await api.post(`/chat/${bookingId}/messages`, { content, type: 'TEXT' });
-        const msg = data.data;
-        if (msg) setMessages((prev) => [...prev, msg]);
-      } catch {
-        Toast.show({ type: 'error', text1: 'Gagal mengirim pesan' });
-      }
-    }
+    socket.emit('send_message', { bookingId, content, type: 'TEXT' });
+    setText('');
   }, [text, bookingId, light]);
 
   const handleTextChange = useCallback((t: string) => {
@@ -145,6 +144,59 @@ export function ChatScreen({ route, navigation }: Props) {
     const socket = getSocket();
     socket.emit('typing', { bookingId });
   }, [bookingId]);
+
+  const uploadImage = useCallback(async (asset: ImagePicker.ImagePickerAsset) => {
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', {
+        uri: asset.uri,
+        type: asset.mimeType || 'image/jpeg',
+        name: asset.fileName || `chat-${Date.now()}.jpg`,
+      } as any);
+
+      await api.post(`/chats/${bookingId}/image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    } catch (err: any) {
+      Toast.show({ type: 'error', text1: err?.response?.data?.message || 'Gagal mengirim gambar' });
+    } finally {
+      setUploadingImage(false);
+    }
+  }, [bookingId]);
+
+  const handlePickGallery = useCallback(async () => {
+    selection();
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permission.status !== 'granted') {
+      Toast.show({ type: 'error', text1: 'Izin galeri diperlukan' });
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      await uploadImage(result.assets[0]);
+    }
+  }, [selection, uploadImage]);
+
+  const handleOpenCamera = useCallback(async () => {
+    selection();
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (permission.status !== 'granted') {
+      Toast.show({ type: 'error', text1: 'Izin kamera diperlukan' });
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      await uploadImage(result.assets[0]);
+    }
+  }, [selection, uploadImage]);
 
   const scrollToBottom = useCallback(() => {
     flatListRef.current?.scrollToEnd({ animated: true });
@@ -162,10 +214,16 @@ export function ChatScreen({ route, navigation }: Props) {
     const showDate = !prev || dayjs(item.createdAt).format('YYYY-MM-DD') !== dayjs(prev.createdAt).format('YYYY-MM-DD');
 
     return (
-      <>
+      <View>
         {showDate && <DateSeparator date={item.createdAt} />}
         <Animated.View entering={ZoomIn.duration(250).springify()} style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}>
-          <Text style={styles.msgText}>{item.content}</Text>
+          {item.type === 'IMAGE' ? (
+            <Pressable onPress={() => Linking.openURL(item.content)}>
+              <Image source={{ uri: resolvePhotoUrl(item.content) }} style={styles.msgImage} />
+            </Pressable>
+          ) : (
+            <Text style={styles.msgText}>{item.content}</Text>
+          )}
           <View style={styles.msgMeta}>
             <Text style={[styles.msgTime, isMe && styles.msgTimeMe]}>
               {dayjs(item.createdAt).format('HH:mm')}
@@ -180,7 +238,7 @@ export function ChatScreen({ route, navigation }: Props) {
             )}
           </View>
         </Animated.View>
-      </>
+      </View>
     );
   };
 
@@ -214,12 +272,13 @@ export function ChatScreen({ route, navigation }: Props) {
       {/* Quick Actions + Input Bar */}
       <View style={styles.inputBar}>
         <View style={styles.quickActions}>
-          <TouchableOpacity onPress={() => selection()} style={styles.quickBtn}>
+          <TouchableOpacity onPress={handleOpenCamera} style={styles.quickBtn} disabled={uploadingImage}>
             <Ionicons name="camera-outline" size={22} color={COLORS.textMuted} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => selection()} style={styles.quickBtn}>
+          <TouchableOpacity onPress={handlePickGallery} style={styles.quickBtn} disabled={uploadingImage}>
             <Ionicons name="attach-outline" size={22} color={COLORS.textMuted} />
           </TouchableOpacity>
+          {uploadingImage && <Text style={styles.uploadingText}>Mengirim gambar...</Text>}
         </View>
         <View style={styles.inputRow}>
           <TextInput
@@ -252,7 +311,10 @@ const headerStyles = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
   onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.online },
-  tier: { fontSize: 11, fontWeight: '600', marginTop: 1 },
+  offlineDot: { backgroundColor: COLORS.textMuted },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 1 },
+  statusText: { fontSize: 11, color: COLORS.textMuted, fontWeight: '500' },
+  tier: { fontSize: 11, fontWeight: '600' },
 });
 
 const styles = StyleSheet.create({
@@ -285,6 +347,12 @@ const styles = StyleSheet.create({
     borderColor: COLORS.darkBorder,
   },
   msgText: { fontSize: 14, color: COLORS.textPrimary, lineHeight: 20 },
+  msgImage: {
+    width: 180,
+    height: 180,
+    borderRadius: 14,
+    backgroundColor: COLORS.darkElevated,
+  },
   msgMeta: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', marginTop: 4 },
   msgTime: { fontSize: 10, color: COLORS.textMuted },
   msgTimeMe: { color: COLORS.goldDark },
@@ -297,9 +365,11 @@ const styles = StyleSheet.create({
   },
   quickActions: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
     marginBottom: 6,
   },
+  uploadingText: { fontSize: 12, color: COLORS.gold, marginLeft: 6, fontWeight: '600' },
   quickBtn: {
     width: 36,
     height: 36,

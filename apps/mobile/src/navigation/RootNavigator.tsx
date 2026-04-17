@@ -25,7 +25,7 @@ export type RootStackParamList = {
   EscortDetail: { escortId: string };
   BookingCreate: { escortId: string; escortName: string; hourlyRate: number };
   BookingDetail: { bookingId: string };
-  Chat: { bookingId: string; participantName: string; participantPhoto?: string; participantTier?: string };
+  Chat: { bookingId: string; participantId?: string; participantName: string; participantPhoto?: string; participantTier?: string };
   Payment: { bookingId: string; amount: number; bookingStatus?: string };
   Review: { bookingId: string; revieweeName: string };
   SOS: { bookingId: string };

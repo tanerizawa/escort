@@ -40,6 +40,7 @@ export function useLocationTracker() {
   const isSendingRef = useRef(false);
   const mountedRef = useRef(true);
   const stoppedRef = useRef(false);
+  const locationErrorCountRef = useRef(0);
 
   // Helper: check if token exists
   const hasToken = () => typeof window !== 'undefined' && !!localStorage.getItem('accessToken');
@@ -77,7 +78,7 @@ export function useLocationTracker() {
       const items = payload?.bookings || payload?.items || payload?.data || [];
       if (!Array.isArray(items)) return [];
       return items
-        .filter((b: any) => ['CONFIRMED', 'ONGOING'].includes(b.status))
+        .filter((b: any) => b.status === 'ONGOING')
         .map((b: any) => ({ id: b.id, status: b.status }));
     } catch (err: any) {
       if (err?.response?.status === 401 || err?.message === 'No refresh token') {
@@ -149,6 +150,10 @@ export function useLocationTracker() {
     const id = navigator.geolocation.watchPosition(
       (position) => {
         latestPositionRef.current = position;
+        locationErrorCountRef.current = 0;
+        if (mountedRef.current) {
+          setState((prev) => ({ ...prev, error: null }));
+        }
       },
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {
@@ -158,6 +163,21 @@ export function useLocationTracker() {
             isTracking: false,
             error: 'Izin lokasi ditolak. Aktifkan di pengaturan browser.',
           }));
+          stopAll();
+          return;
+        }
+
+        locationErrorCountRef.current += 1;
+
+        if (mountedRef.current) {
+          setState((prev) => ({
+            ...prev,
+            error: 'Lokasi tidak tersedia saat ini. Pastikan GPS aktif dan sinyal memadai.',
+          }));
+        }
+
+        // Avoid infinite geolocation retries that spam browser/location-provider logs.
+        if (locationErrorCountRef.current >= 3) {
           stopAll();
         }
       },
@@ -187,6 +207,7 @@ export function useLocationTracker() {
     if (!mountedRef.current) return;
 
     if (bookings.length > 0) {
+      startWatching();
       // Start booking-specific sending
       if (!bookingSendIntervalRef.current) {
         sendBookingLocations();
@@ -197,6 +218,16 @@ export function useLocationTracker() {
       if (bookingSendIntervalRef.current) {
         clearInterval(bookingSendIntervalRef.current);
         bookingSendIntervalRef.current = null;
+      }
+
+      // No active booking => stop geolocation watch and general pings to avoid noisy platform errors.
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
       }
     }
 
@@ -214,11 +245,9 @@ export function useLocationTracker() {
 
     if (!user) return;
     if (!['CLIENT', 'ESCORT'].includes(user.role)) return;
+    if (!hasToken()) return;
 
-    // Start GPS watching immediately (for general ping)
-    startWatching();
-
-    // Check for active bookings
+    // Start tracking only when there are active bookings.
     checkAndUpdate();
     bookingCheckRef.current = setInterval(checkAndUpdate, BOOKING_CHECK_MS);
 

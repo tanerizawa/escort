@@ -53,7 +53,7 @@ export function MainTabNavigator() {
     const fetchCounts = async () => {
       try {
         const [chatRes, bookingRes] = await Promise.all([
-          api.get('/chat/conversations').catch(() => ({ data: { data: [] } })),
+          api.get('/chats').catch(() => ({ data: { data: [] } })),
           isEscort ? api.get('/bookings?status=PENDING&limit=50').catch(() => ({ data: { data: [] } })) : Promise.resolve({ data: { data: [] } }),
         ]);
         if (cancelled) return;

@@ -51,3 +51,6 @@ apps/api/prisma/*.db
 *.log
 *.pid
 *.seed
+apps/web/public/downloads/areton-debug.apk
+apps/web/public/downloads/*.apk
+uploads/*.apk

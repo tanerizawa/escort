@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, Platform,
 } from 'react-native';
@@ -8,11 +8,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import type BottomSheet from '@gorhom/bottom-sheet';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { GradientButton } from '../../components/ui/GradientButton';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { StepProgress } from '../../components/ui/ProgressBar';
 import { Input } from '../../components/Input';
+import { BottomSheetWrapper } from '../../components/ui/BottomSheetWrapper';
 import { COLORS, SPACING, RADIUS, SHADOWS, SERVICE_TYPES, GRADIENTS, ANIMATION } from '../../constants/theme';
 import { ServiceType } from '../../constants/types';
 import { useHaptic } from '../../hooks/useHaptic';
@@ -54,10 +56,12 @@ export function BookingCreateScreen({ route, navigation }: Props) {
   const [specialRequests, setSpecialRequests] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState(new Date());
+  const [draftDate, setDraftDate] = useState(new Date());
+  const [draftTime, setDraftTime] = useState(new Date());
+  const dateSheetRef = useRef<BottomSheet>(null);
+  const timeSheetRef = useRef<BottomSheet>(null);
   const { selection, success: hapticSuccess } = useHaptic();
 
   const estimatedTotal = hourlyRate * (parseInt(duration) || 0);
@@ -75,6 +79,32 @@ export function BookingCreateScreen({ route, navigation }: Props) {
   const handleBack = () => {
     if (step > 1) { selection(); setStep(step - 1); }
   };
+
+  const openDateSheet = useCallback(() => {
+    selection();
+    setDraftDate(selectedDate);
+    dateSheetRef.current?.snapToIndex(0);
+  }, [selection, selectedDate]);
+
+  const openTimeSheet = useCallback(() => {
+    selection();
+    setDraftTime(selectedTime);
+    timeSheetRef.current?.snapToIndex(0);
+  }, [selection, selectedTime]);
+
+  const applyDateSelection = useCallback(() => {
+    selection();
+    setSelectedDate(draftDate);
+    setDate(dayjs(draftDate).format('YYYY-MM-DD'));
+    dateSheetRef.current?.close();
+  }, [draftDate, selection]);
+
+  const applyTimeSelection = useCallback(() => {
+    selection();
+    setSelectedTime(draftTime);
+    setStartHour(dayjs(draftTime).format('HH:mm'));
+    timeSheetRef.current?.close();
+  }, [draftTime, selection]);
 
   const handleCreate = async () => {
     if (!date || !startHour || !location.trim()) {
@@ -166,46 +196,16 @@ export function BookingCreateScreen({ route, navigation }: Props) {
         {/* Step 2: Date & Time */}
         {step === 2 && (
           <Animated.View key="step2" entering={SlideInRight.duration(300)} exiting={SlideOutLeft.duration(200)}>
-            <Pressable onPress={() => setShowDatePicker(true)}>
+            <Pressable onPress={openDateSheet}>
               <View pointerEvents="none">
                 <Input label="Tanggal" placeholder="Pilih tanggal" value={date ? dayjs(date).format('DD MMMM YYYY') : ''} icon="calendar-outline" editable={false} />
               </View>
             </Pressable>
-            {showDatePicker && (
-              <DateTimePicker
-                value={selectedDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                minimumDate={new Date()}
-                onChange={(event: DateTimePickerEvent, chosen?: Date) => {
-                  setShowDatePicker(Platform.OS === 'ios');
-                  if (event.type === 'set' && chosen) {
-                    setSelectedDate(chosen);
-                    setDate(dayjs(chosen).format('YYYY-MM-DD'));
-                  }
-                }}
-              />
-            )}
-            <Pressable onPress={() => setShowTimePicker(true)}>
+            <Pressable onPress={openTimeSheet}>
               <View pointerEvents="none">
                 <Input label="Jam Mulai" placeholder="Pilih jam" value={startHour ? startHour : ''} icon="time-outline" editable={false} />
               </View>
             </Pressable>
-            {showTimePicker && (
-              <DateTimePicker
-                value={selectedTime}
-                mode="time"
-                is24Hour={true}
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event: DateTimePickerEvent, chosen?: Date) => {
-                  setShowTimePicker(Platform.OS === 'ios');
-                  if (event.type === 'set' && chosen) {
-                    setSelectedTime(chosen);
-                    setStartHour(dayjs(chosen).format('HH:mm'));
-                  }
-                }}
-              />
-            )}
             <Input label="Durasi (jam)" placeholder="3" value={duration} onChangeText={setDuration} keyboardType="number-pad" icon="hourglass-outline" />
           </Animated.View>
         )}
@@ -263,6 +263,60 @@ export function BookingCreateScreen({ route, navigation }: Props) {
           </Animated.View>
         )}
       </ScrollView>
+
+      <BottomSheetWrapper
+        ref={dateSheetRef}
+        title="Pilih Tanggal"
+        snapPoints={Platform.OS === 'ios' ? ['46%'] : ['56%']}
+        onClose={() => dateSheetRef.current?.close()}
+      >
+        <View style={styles.pickerSheet}>
+          <View style={styles.pickerPreview}>
+            <Text style={styles.pickerPreviewLabel}>Tanggal booking</Text>
+            <Text style={styles.pickerPreviewValue}>{dayjs(draftDate).format('dddd, DD MMM YYYY')}</Text>
+          </View>
+          <DateTimePicker
+            value={draftDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+            minimumDate={new Date()}
+            onChange={(event: DateTimePickerEvent, chosen?: Date) => {
+              if (event.type === 'set' && chosen) {
+                setDraftDate(chosen);
+              }
+            }}
+            themeVariant="dark"
+          />
+          <GradientButton title="Gunakan Tanggal Ini" onPress={applyDateSelection} size="lg" />
+        </View>
+      </BottomSheetWrapper>
+
+      <BottomSheetWrapper
+        ref={timeSheetRef}
+        title="Pilih Jam Mulai"
+        snapPoints={Platform.OS === 'ios' ? ['42%'] : ['50%']}
+        onClose={() => timeSheetRef.current?.close()}
+      >
+        <View style={styles.pickerSheet}>
+          <View style={styles.pickerPreview}>
+            <Text style={styles.pickerPreviewLabel}>Jam mulai booking</Text>
+            <Text style={styles.pickerPreviewValue}>{dayjs(draftTime).format('HH:mm')}</Text>
+          </View>
+          <DateTimePicker
+            value={draftTime}
+            mode="time"
+            is24Hour={true}
+            display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
+            onChange={(event: DateTimePickerEvent, chosen?: Date) => {
+              if (event.type === 'set' && chosen) {
+                setDraftTime(chosen);
+              }
+            }}
+            themeVariant="dark"
+          />
+          <GradientButton title="Gunakan Jam Ini" onPress={applyTimeSelection} size="lg" />
+        </View>
+      </BottomSheetWrapper>
 
       {/* Bottom Navigation Buttons */}
       <View style={styles.bottomBar}>
@@ -353,6 +407,29 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 14, color: COLORS.textSecondary },
   summaryVal2: { fontSize: 14, color: COLORS.textPrimary, fontWeight: '600', maxWidth: '55%', textAlign: 'right' },
   summaryValGold: { fontSize: 20, fontWeight: '800', color: COLORS.gold },
+  pickerSheet: {
+    gap: SPACING.base,
+    paddingBottom: SPACING.lg,
+  },
+  pickerPreview: {
+    backgroundColor: COLORS.darkElevated,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.gold + '20',
+    padding: SPACING.base,
+    gap: 4,
+  },
+  pickerPreviewLabel: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  pickerPreviewValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
   bottomBar: {
     flexDirection: 'row',
     alignItems: 'center',

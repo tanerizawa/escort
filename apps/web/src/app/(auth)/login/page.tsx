@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
@@ -219,17 +219,26 @@ export default function LoginPage() {
     { label: 'Password' },
   ];
 
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (password) {
+      void handleSubmit();
+    }
+  };
+
   return (
-    <WizardShell steps={steps}>
-      <EmailStep email={email} setEmail={setEmail} error={error} />
-      <PasswordStep
-        email={email}
-        password={password}
-        setPassword={setPassword}
-        error={error}
-        isLoading={isLoading}
-        onSubmit={handleSubmit}
-      />
-    </WizardShell>
+    <form onSubmit={handleFormSubmit}>
+      <WizardShell steps={steps}>
+        <EmailStep email={email} setEmail={setEmail} error={error} />
+        <PasswordStep
+          email={email}
+          password={password}
+          setPassword={setPassword}
+          error={error}
+          isLoading={isLoading}
+          onSubmit={handleSubmit}
+        />
+      </WizardShell>
+    </form>
   );
 }

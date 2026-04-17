@@ -9,7 +9,7 @@ import { TransactionLockProvider } from '@/components/transaction/TransactionLoc
 import { useActiveBookingStore } from '@/stores/active-booking.store';
 
 export default function EscortLayout({ children }: { children: React.ReactNode }) {
-  const { isLocked } = useActiveBookingStore();
+  const { phase } = useActiveBookingStore();
 
   return (
     <AuthGuard allowedRoles={['ESCORT']}>
@@ -18,10 +18,14 @@ export default function EscortLayout({ children }: { children: React.ReactNode }
           <Navbar />
           <div className="flex flex-1 pt-20">
             <Sidebar />
-            <main className={`flex-1 p-6 lg:p-8 page-enter ${isLocked ? 'pb-24' : ''}`}>{children}</main>
+            <main className="flex-1 p-6 lg:p-8 page-enter pb-[calc(1.5rem+var(--tx-banner-offset,0px))] lg:pb-[calc(2rem+var(--tx-banner-offset,0px))]">{children}</main>
           </div>
-          <LocationTracker />
-          <GpsPermissionPrompt />
+          {phase === 'ONGOING' && (
+            <>
+              <LocationTracker />
+              <GpsPermissionPrompt />
+            </>
+          )}
         </div>
       </TransactionLockProvider>
     </AuthGuard>

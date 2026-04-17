@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/config/prisma.service';
 import { RedisService } from '@/config/redis.service';
 import { CreatePaymentDto, PaymentQueryDto, WithdrawRequestDto, RefundPaymentDto, WebhookPayloadDto } from './dto/payment.dto';
@@ -20,6 +21,7 @@ export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
 
   constructor(
+    private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly xendit: XenditService,
@@ -34,6 +36,16 @@ export class PaymentService {
   private async getCommissionRate(): Promise<number> {
     const redisVal = await this.redis.get('platform:commission_rate');
     return redisVal ? Number(redisVal) / 100 : PLATFORM_FEE_RATE;
+  }
+
+  private isPaymentMockEnabled(): boolean {
+    // UAT safety: real gateway is disabled by default unless explicitly set to REAL.
+    const paymentMode = this.configService.get<string>('PAYMENT_MODE');
+    if (paymentMode) {
+      return paymentMode.toUpperCase() !== 'REAL';
+    }
+
+    return true;
   }
 
   async create(userId: string, dto: CreatePaymentDto) {
@@ -62,13 +74,15 @@ export class PaymentService {
     const amount = booking.totalAmount;
     const amountNum = amount.toNumber();
     const commissionRate = await this.getCommissionRate();
-    const platformFee = new Prisma.Decimal(amountNum * commissionRate);
-    const escortPayout = new Prisma.Decimal(amountNum * (1 - commissionRate));
-    const tipAmount = dto.tipAmount ? new Prisma.Decimal(dto.tipAmount) : null;
 
     // Calculate charge amount based on payment type
     const chargeAmount = Math.round(amountNum * dpMultiplier);
     const totalCharge = chargeAmount + (dto.tipAmount || 0);
+
+    // Fee split must be proportional to the actual charged amount, not full booking amount
+    const platformFee = new Prisma.Decimal(Math.round(chargeAmount * commissionRate));
+    const escortPayout = new Prisma.Decimal(Math.round(chargeAmount * (1 - commissionRate)));
+    const tipAmount = dto.tipAmount ? new Prisma.Decimal(dto.tipAmount) : null;
 
     // Create payment via appropriate gateway
     const orderId = `ARETON-${booking.id.substring(0, 8)}-${Date.now()}`;
@@ -81,7 +95,19 @@ export class PaymentService {
 
     let gatewayResult: any;
 
-    if (isCrypto) {
+    if (this.isPaymentMockEnabled()) {
+      const webUrl = this.configService.get('WEB_URL') || 'https://areton.id';
+      gatewayResult = {
+        orderId,
+        invoiceId: `MOCK-PAY-${Date.now()}`,
+        redirectUrl: `${webUrl}/user/payments/status?order_id=${orderId}&mock=true`,
+        invoiceUrl: `${webUrl}/user/payments/status?order_id=${orderId}&mock=true`,
+        paymentType: isCrypto ? 'crypto-mock' : isDoku ? 'doku-mock' : 'fiat-mock',
+        mock: true,
+      };
+
+      this.logger.warn(`Payment mock enabled: ${dto.method} → ${orderId} for booking ${booking.id}`);
+    } else if (isCrypto) {
       // Route to crypto (NOWPayments)
       const payCurrency = dto.method === 'crypto' ? undefined : dto.method.replace('crypto_', '');
       try {
@@ -362,30 +388,41 @@ export class PaymentService {
   }
 
   async requestWithdraw(escortId: string, dto: WithdrawRequestDto) {
-    const earnings = await this.getEarningsSummary(escortId);
-
-    if (dto.amount > earnings.pendingPayout) {
-      throw new BadRequestException(
-        `Saldo tersedia: Rp ${earnings.pendingPayout.toLocaleString('id-ID')}. Withdrawal melebihi saldo.`,
-      );
+    // Acquire a Redis lock to prevent concurrent withdrawal race conditions
+    const lockKey = `withdraw_lock:${escortId}`;
+    const acquired = await this.redis.setNX(lockKey, '1', 30); // 30s TTL, NX (set-if-not-exists)
+    if (!acquired) {
+      throw new BadRequestException('Permintaan withdrawal sedang diproses. Silakan tunggu.');
     }
 
-    const withdrawal = await this.prisma.withdrawal.create({
-      data: {
-        escortId,
-        amount: new Prisma.Decimal(dto.amount),
-        bankName: dto.bankName,
-        bankAccount: dto.bankAccount,
-        accountHolder: dto.accountHolder || null,
-        status: 'PENDING',
-      },
-    });
+    try {
+      const earnings = await this.getEarningsSummary(escortId);
 
-    return {
-      message: 'Permintaan withdrawal berhasil diajukan',
-      withdrawal,
-      estimatedArrival: '1-3 hari kerja',
-    };
+      if (dto.amount > earnings.pendingPayout) {
+        throw new BadRequestException(
+          `Saldo tersedia: Rp ${earnings.pendingPayout.toLocaleString('id-ID')}. Withdrawal melebihi saldo.`,
+        );
+      }
+
+      const withdrawal = await this.prisma.withdrawal.create({
+        data: {
+          escortId,
+          amount: new Prisma.Decimal(dto.amount),
+          bankName: dto.bankName,
+          bankAccount: dto.bankAccount,
+          accountHolder: dto.accountHolder || null,
+          status: 'PENDING',
+        },
+      });
+
+      return {
+        message: 'Permintaan withdrawal berhasil diajukan',
+        withdrawal,
+        estimatedArrival: '1-3 hari kerja',
+      };
+    } finally {
+      await this.redis.del(lockKey);
+    }
   }
 
   async getWithdrawals(escortId: string, query: { page?: number; limit?: number }) {
@@ -459,8 +496,12 @@ export class PaymentService {
       ? new Prisma.Decimal(Math.min(dto.amount, payment.amount.toNumber()))
       : payment.amount;
 
-    // TODO: Process refund via Xendit
-    // await this.xendit.processRefund({ invoiceId: payment.paymentGatewayRef, amount: refundAmount.toNumber(), reason: dto.reason })
+    // WARNING: Gateway refund not yet implemented — only DB status updated.
+    // Actual money return must be done manually until gateway refund API is integrated.
+    this.logger.warn(
+      `REFUND [MANUAL REQUIRED]: Payment ${paymentId}, amount: ${refundAmount}, gateway: ${payment.method}. ` +
+      `No automatic refund processed — admin must refund via gateway dashboard.`,
+    );
 
     return this.prisma.payment.update({
       where: { id: paymentId },
@@ -527,6 +568,12 @@ export class PaymentService {
     const newStatus = statusMap[notification.status];
     if (!newStatus) {
       return { status: 'ignored', message: `Unknown status: ${notification.status}` };
+    }
+
+    // Idempotency: skip if payment is already in desired or terminal state
+    if (payment.status === newStatus || ['RELEASED', 'REFUNDED'].includes(payment.status)) {
+      this.logger.log(`Webhook duplicate/terminal skip: ${notification.externalId} already ${payment.status}`);
+      return { status: 'ok', message: 'Already processed', paymentId: payment.id };
     }
 
     const updateData: any = { status: newStatus };
@@ -617,6 +664,12 @@ export class PaymentService {
       return { status: 'ignored', message: `Status ${notification.status} — no action` };
     }
 
+    // Idempotency: skip if payment is already in desired or terminal state
+    if (payment.status === newStatus || ['RELEASED', 'REFUNDED'].includes(payment.status)) {
+      this.logger.log(`Crypto webhook duplicate/terminal skip: ${notification.orderId} already ${payment.status}`);
+      return { status: 'ok', message: 'Already processed', paymentId: payment.id };
+    }
+
     const updateData: any = { status: newStatus };
     if (newStatus === 'ESCROW') {
       updateData.paidAt = new Date();
@@ -700,6 +753,12 @@ export class PaymentService {
     if (!newStatus) {
       this.logger.log(`DOKU webhook status: ${notification.invoiceNumber} → ${notification.status} (no action)`);
       return { status: 'ignored', message: `Status ${notification.status} — no action` };
+    }
+
+    // Idempotency: skip if payment is already in desired or terminal state
+    if (payment.status === newStatus || ['RELEASED', 'REFUNDED'].includes(payment.status)) {
+      this.logger.log(`DOKU webhook duplicate/terminal skip: ${notification.invoiceNumber} already ${payment.status}`);
+      return { status: 'ok', message: 'Already processed', paymentId: payment.id };
     }
 
     const updateData: any = { status: newStatus };

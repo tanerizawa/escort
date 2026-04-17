@@ -10,7 +10,7 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 import { usePresenceStore } from '@/stores/presence.store';
 import { getSocket, connectSocket } from '@/lib/socket';
-import { Hand } from 'lucide-react';
+import { AlertTriangle, Hand, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -28,6 +28,16 @@ interface ChatPartner {
   profilePhoto?: string;
 }
 
+function mergeUniqueMessages(items: Message[]): Message[] {
+  const byId = new Map<string, Message>();
+  items.forEach((item) => {
+    byId.set(item.id, item);
+  });
+  return Array.from(byId.values()).sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+}
+
 export default function ChatRoomPage() {
   const params = useParams();
   const router = useRouter();
@@ -40,6 +50,10 @@ export default function ChatRoomPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [isPartnerTyping, setIsPartnerTyping] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [connectionIssue, setConnectionIssue] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [retryContent, setRetryContent] = useState<string>('');
   const isPartnerOnline = usePresenceStore((s) => s.isOnline(partner?.id || ''));
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -49,6 +63,13 @@ export default function ChatRoomPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tempImageBlobUrlsRef = useRef<string[]>([]);
+
+  const cleanupTempImageBlobUrls = useCallback(() => {
+    if (tempImageBlobUrlsRef.current.length === 0) return;
+    tempImageBlobUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    tempImageBlobUrlsRef.current = [];
+  }, []);
 
   useEffect(() => {
     loadMessages();
@@ -56,11 +77,14 @@ export default function ChatRoomPage() {
 
     // Real-time via WebSocket
     const socket = connectSocket();
+    setSocketConnected(socket.connected);
+    setConnectionIssue(socket.connected ? null : 'Menghubungkan ulang ke server chat...');
+
     socket.emit('chat:join', { bookingId });
 
     const handleNewMessage = (msg: Message) => {
       if (msg.senderId !== user?.id) {
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => mergeUniqueMessages([...prev, msg]));
         markAsRead();
       }
     };
@@ -73,8 +97,28 @@ export default function ChatRoomPage() {
       }
     };
 
+    const handleConnect = () => {
+      setSocketConnected(true);
+      setConnectionIssue(null);
+      socket.emit('chat:join', { bookingId });
+      loadMessages(true);
+    };
+
+    const handleDisconnect = () => {
+      setSocketConnected(false);
+      setConnectionIssue('Koneksi real-time terputus. Beralih ke sinkronisasi berkala.');
+    };
+
+    const handleConnectError = () => {
+      setSocketConnected(false);
+      setConnectionIssue('Gagal tersambung ke server chat. Mencoba ulang otomatis...');
+    };
+
     socket.on('chat:message', handleNewMessage);
     socket.on('chat:typing', handleTyping);
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('connect_error', handleConnectError);
 
     // Fallback poll every 15s
     pollRef.current = setInterval(() => {
@@ -85,9 +129,13 @@ export default function ChatRoomPage() {
       socket.emit('chat:leave', { bookingId });
       socket.off('chat:message', handleNewMessage);
       socket.off('chat:typing', handleTyping);
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('connect_error', handleConnectError);
       if (pollRef.current) clearInterval(pollRef.current);
+      cleanupTempImageBlobUrls();
     };
-  }, [bookingId]);
+  }, [bookingId, user?.id, cleanupTempImageBlobUrls]);
 
   // Online status — disabled until backend endpoint is implemented
   // useEffect(() => { ... }, [bookingId, partner]);
@@ -113,7 +161,7 @@ export default function ChatRoomPage() {
       if (!silent) setLoading(true);
       const res = await api.get(`/chats/${bookingId}/messages`);
       const data = res.data?.data || res.data;
-      setMessages(data.messages || []);
+      setMessages(mergeUniqueMessages(data.messages || []));
       if (data.otherUser) setPartner(data.otherUser);
     } catch (err: any) {
       // Stop polling on auth failure
@@ -145,6 +193,8 @@ export default function ChatRoomPage() {
     const content = newMessage.trim();
     setNewMessage('');
     setSending(true);
+    setSendError(null);
+    setRetryContent('');
 
     // Optimistic add
     const optimisticMsg: Message = {
@@ -163,6 +213,8 @@ export default function ChatRoomPage() {
       // Remove optimistic message on failure
       setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
       setNewMessage(content);
+      setRetryContent(content);
+      setSendError('Pesan gagal dikirim. Coba lagi saat koneksi stabil.');
     } finally {
       setSending(false);
       inputRef.current?.focus();
@@ -192,13 +244,14 @@ export default function ChatRoomPage() {
     setUploadingImage(true);
 
     for (const file of imageFiles) {
+      const tempId = `img-${Date.now()}-${Math.random()}`;
+      const previewUrl = URL.createObjectURL(file);
       try {
         const formData = new FormData();
         formData.append('image', file);
 
         // Optimistic placeholder
-        const tempId = `img-${Date.now()}-${Math.random()}`;
-        const previewUrl = URL.createObjectURL(file);
+        tempImageBlobUrlsRef.current.push(previewUrl);
         const optimisticMsg: Message = {
           id: tempId,
           senderId: user?.id || '',
@@ -214,12 +267,16 @@ export default function ChatRoomPage() {
         });
       } catch (err) {
         console.error('Failed to upload image', err);
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        URL.revokeObjectURL(previewUrl);
+        tempImageBlobUrlsRef.current = tempImageBlobUrlsRef.current.filter((url) => url !== previewUrl);
       }
     }
 
     setImageFiles([]);
     setUploadingImage(false);
     await loadMessages(true);
+    cleanupTempImageBlobUrls();
   };
 
   const formatTime = (dateStr: string) => {
@@ -287,6 +344,21 @@ export default function ChatRoomPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto py-4">
+        {connectionIssue && (
+          <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-300">
+            <div className="flex items-center gap-2">
+              {socketConnected ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+              <span>{connectionIssue}</span>
+            </div>
+            <button
+              className="inline-flex items-center gap-1 rounded-md border border-yellow-500/30 px-2 py-1 text-[11px] text-yellow-200 hover:bg-yellow-500/10"
+              onClick={() => loadMessages(true)}
+            >
+              <RefreshCw className="h-3.5 w-3.5" /> Sinkronkan
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-400/30 border-t-brand-400" />
@@ -348,6 +420,25 @@ export default function ChatRoomPage() {
         {/* Typing indicator */}
         {isPartnerTyping && partner && (
           <TypingIndicator name={partner?.firstName} />
+        )}
+
+        {sendError && (
+          <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            <div className="inline-flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              <span>{sendError}</span>
+            </div>
+            <button
+              className="rounded-md border border-red-500/30 px-2 py-1 text-[11px] text-red-200 hover:bg-red-500/10"
+              onClick={() => {
+                if (retryContent) setNewMessage(retryContent);
+                setSendError(null);
+                inputRef.current?.focus();
+              }}
+            >
+              Muat ulang draft
+            </button>
+          </div>
         )}
 
         {/* Image preview */}

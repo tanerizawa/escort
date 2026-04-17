@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Text, StyleSheet, TextStyle } from 'react-native';
-import {
+import React, { useEffect } from 'react';
+import { TextInput, StyleSheet, TextStyle } from 'react-native';
+import Animated, {
   useSharedValue,
+  useAnimatedProps,
   withTiming,
   Easing,
-  useAnimatedReaction,
-  runOnJS,
 } from 'react-native-reanimated';
 
 interface AnimatedCounterProps {
@@ -18,16 +17,7 @@ interface AnimatedCounterProps {
   formatter?: (n: number) => string;
 }
 
-function formatValue(
-  v: number,
-  decimals: number,
-  formatter?: (n: number) => string,
-): string {
-  if (formatter) return formatter(v);
-  return decimals > 0
-    ? v.toFixed(decimals)
-    : Math.round(v).toLocaleString('id-ID');
-}
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 export function AnimatedCounter({
   value,
@@ -38,18 +28,7 @@ export function AnimatedCounter({
   style,
   formatter,
 }: AnimatedCounterProps) {
-  const animValue = useSharedValue(value);
-
-  const [displayText, setDisplayText] = useState(
-    () => `${prefix}${formatValue(value, decimals, formatter)}${suffix}`,
-  );
-
-  const updateText = useCallback(
-    (v: number) => {
-      setDisplayText(`${prefix}${formatValue(v, decimals, formatter)}${suffix}`);
-    },
-    [formatter, decimals, prefix, suffix],
-  );
+  const animValue = useSharedValue(0);
 
   useEffect(() => {
     animValue.value = withTiming(value, {
@@ -58,17 +37,27 @@ export function AnimatedCounter({
     });
   }, [value, duration, animValue]);
 
-  useAnimatedReaction(
-    () => animValue.value,
-    (current) => {
-      runOnJS(updateText)(current);
-    },
-  );
+  const animProps = useAnimatedProps(() => {
+    const v = animValue.value;
+    const formatted = formatter
+      ? formatter(v)
+      : decimals > 0
+        ? v.toFixed(decimals)
+        : Math.round(v).toString();
+    return {
+      text: `${prefix}${formatted}${suffix}`,
+      defaultValue: `${prefix}${formatted}${suffix}`,
+    } as any;
+  });
 
   return (
-    <Text style={[styles.text, style]}>
-      {displayText}
-    </Text>
+    <AnimatedTextInput
+      underlineColorAndroid="transparent"
+      editable={false}
+      style={[styles.text, style]}
+      animatedProps={animProps}
+      defaultValue={`${prefix}${formatter ? formatter(value) : decimals > 0 ? value.toFixed(decimals) : Math.round(value).toString()}${suffix}`}
+    />
   );
 }
 
@@ -76,5 +65,7 @@ const styles = StyleSheet.create({
   text: {
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
+    padding: 0,
+    margin: 0,
   },
 });

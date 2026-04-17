@@ -256,8 +256,6 @@ export class AuthService {
 
     return {
       message: 'If the email exists, a reset link has been sent',
-      // Only include token in development for testing
-      ...(this.config.get('app.nodeEnv') === 'development' && { resetToken }),
     };
   }
 
@@ -346,7 +344,11 @@ export class AuthService {
     const backupCodes = Array.from({ length: 8 }, () =>
       randomBytes(4).toString('hex').toUpperCase(),
     );
-    await this.redis.setJSON(`2fa_backup:${userId}`, backupCodes);
+    // Store hashed backup codes in Redis (SHA-256)
+    const hashedCodes = backupCodes.map((c) =>
+      createHmac('sha256', 'backup-code-salt').update(c).digest('hex'),
+    );
+    await this.redis.setJSON(`2fa_backup:${userId}`, hashedCodes);
 
     await this.audit.log({
       userId,
@@ -386,16 +388,17 @@ export class AuthService {
     // Try TOTP code first
     let isValid = this.verifyTOTP(user.twoFactorSecret, code);
 
-    // If TOTP fails, try backup codes
+    // If TOTP fails, try backup codes (stored as hashed)
     if (!isValid) {
-      const backupCodes = await this.redis.getJSON<string[]>(`2fa_backup:${user.id}`);
-      if (backupCodes) {
-        const codeIndex = backupCodes.indexOf(code.toUpperCase());
+      const hashedBackupCodes = await this.redis.getJSON<string[]>(`2fa_backup:${user.id}`);
+      if (hashedBackupCodes) {
+        const inputHash = createHmac('sha256', 'backup-code-salt').update(code.toUpperCase()).digest('hex');
+        const codeIndex = hashedBackupCodes.indexOf(inputHash);
         if (codeIndex !== -1) {
           isValid = true;
           // Remove used backup code
-          backupCodes.splice(codeIndex, 1);
-          await this.redis.setJSON(`2fa_backup:${user.id}`, backupCodes);
+          hashedBackupCodes.splice(codeIndex, 1);
+          await this.redis.setJSON(`2fa_backup:${user.id}`, hashedBackupCodes);
         }
       }
     }

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
-import Animated, { FadeInDown, FadeIn, useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn, useSharedValue, useAnimatedStyle, withSpring, withTiming, withRepeat, Easing } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as WebBrowser from 'expo-web-browser';
@@ -32,6 +32,28 @@ const METHODS: { value: PaymentMethod; label: string; icon: string; section: str
 ];
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+function ProcessingSpinner() {
+  const rotation = useSharedValue(0);
+
+  useEffect(() => {
+    rotation.value = withRepeat(
+      withTiming(360, { duration: 1200, easing: Easing.linear }),
+      -1,
+      false,
+    );
+  }, [rotation]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Ionicons name="sync-outline" size={48} color={COLORS.gold} />
+    </Animated.View>
+  );
+}
 
 function MethodItem({ m, selected, onPress, isLast }: { m: typeof METHODS[0]; selected: boolean; onPress: () => void; isLast: boolean }) {
   const scale = useSharedValue(1);
@@ -152,9 +174,7 @@ export function PaymentScreen({ route, navigation }: Props) {
     return (
       <View style={styles.successContainer}>
         <Animated.View entering={FadeIn.duration(300)} style={styles.successContent}>
-          <Animated.View style={{ transform: [{ rotate: '0deg' }] }}>
-            <Ionicons name="sync-outline" size={48} color={COLORS.gold} />
-          </Animated.View>
+          <ProcessingSpinner />
           <Text style={styles.successTitle}>Memproses Pembayaran...</Text>
           <Text style={styles.successSub}>Mohon tunggu sebentar</Text>
         </Animated.View>

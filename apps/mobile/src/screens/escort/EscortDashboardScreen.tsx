@@ -15,6 +15,8 @@ import { useHaptic } from '../../hooks/useHaptic';
 import { EarningsSummary } from '../../constants/types';
 import api from '../../lib/api';
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function EscortDashboardScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const user = useAuthStore((s) => s.user);

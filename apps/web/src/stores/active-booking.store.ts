@@ -77,6 +77,8 @@ interface ActiveBookingState {
 }
 
 const POLL_COOLDOWN_MS = 5000; // minimum ms between checks
+let networkErrorStreak = 0;
+let backoffUntil = 0;
 
 export const useActiveBookingStore = create<ActiveBookingState>()((set, get) => ({
   isLocked: false,
@@ -91,6 +93,7 @@ export const useActiveBookingStore = create<ActiveBookingState>()((set, get) => 
 
   checkActive: async () => {
     const now = Date.now();
+    if (now < backoffUntil) return;
     if (now - get().lastChecked < POLL_COOLDOWN_MS) return;
     if (get().loading) return;
 
@@ -132,11 +135,25 @@ export const useActiveBookingStore = create<ActiveBookingState>()((set, get) => 
           error: null,
         });
       }
+
+      networkErrorStreak = 0;
+      backoffUntil = 0;
     } catch (err: any) {
       if (err?.response?.status === 401 || err?.message === 'No refresh token') {
         set({ isLocked: false, booking: null, bookings: [], totalActive: 0, selectedIndex: 0, phase: null, loading: false, error: null });
+        networkErrorStreak = 0;
+        backoffUntil = 0;
         return;
       }
+
+      const statusCode = err?.response?.status;
+      const isNetworkOrServerError = !statusCode || statusCode >= 500;
+      if (isNetworkOrServerError) {
+        networkErrorStreak += 1;
+        const backoffMs = Math.min(60_000, 5_000 * 2 ** Math.min(networkErrorStreak - 1, 4));
+        backoffUntil = Date.now() + backoffMs;
+      }
+
       set({ loading: false, error: 'Gagal memeriksa booking aktif' });
     }
   },

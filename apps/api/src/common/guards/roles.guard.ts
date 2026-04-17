@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
@@ -20,6 +20,11 @@ export class RolesGuard implements CanActivate {
 
     if (!user) {
       return false;
+    }
+
+    // Block deactivated users even if they have a valid token
+    if (user.isActive === false) {
+      throw new ForbiddenException('Akun telah dinonaktifkan');
     }
 
     return requiredRoles.includes(user.role);

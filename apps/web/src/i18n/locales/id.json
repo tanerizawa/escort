@@ -43,6 +43,11 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "discover": "Discover",
+    "preferences": "Preferensi",
+    "hallOfFame": "Hall of Fame",
+    "gallery": "Gallery",
+    "contest": "Contest",
     "escorts": "Cari Partner",
     "bookings": "Booking",
     "payments": "Pembayaran",

@@ -29,7 +29,7 @@ export default function AdminBookingsPage() {
 
 function AdminBookingsContent() {
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get('tab') === 'disputes' ? 'disputes' : 'bookings';
+  const initialTab = searchParams?.get('tab') === 'disputes' ? 'disputes' : 'bookings';
   const [activeTab, setActiveTab] = useState<Tab>(initialTab as Tab);
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(true);

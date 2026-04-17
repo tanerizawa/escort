@@ -25,7 +25,7 @@ export function Navbar() {
   const navLinks = isAuthenticated
     ? [
         { href: getDashboardHref(), label: t('nav.dashboard') },
-        { href: user?.role === 'ESCORT' ? '/escort/requests' : '/user/escorts', label: user?.role === 'ESCORT' ? t('nav.requests') : t('nav.escorts') },
+        { href: user?.role === 'ESCORT' ? '/escort/requests' : '/user/discover', label: user?.role === 'ESCORT' ? t('nav.requests') : t('nav.discover') },
         { href: user?.role === 'ESCORT' ? '/escort/earnings' : '/user/bookings', label: user?.role === 'ESCORT' ? t('nav.earnings') : t('bookings.title') },
       ]
     : [

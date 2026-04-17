@@ -38,7 +38,6 @@ export class BookingController {
     @CurrentUser('id') clientId: string,
     @Body() dto: CreateBookingDto,
   ) {
-    console.log('[DEBUG] Create booking DTO:', JSON.stringify(dto));
     return this.bookingService.create(clientId, dto);
   }
 

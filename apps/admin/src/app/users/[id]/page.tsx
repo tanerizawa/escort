@@ -132,7 +132,7 @@ const incidentStatusColors: Record<string, string> = {
 export default function AdminUserDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const userId = params.id as string;
+  const userId = params?.id as string;
 
   const [user, setUser] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);

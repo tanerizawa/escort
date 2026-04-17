@@ -25,7 +25,7 @@ export function ChatListScreen() {
 
   const fetchRooms = useCallback(async () => {
     try {
-      const { data } = await api.get('/chat/conversations');
+      const { data } = await api.get('/chats');
       setRooms(data.data || []);
     } catch { /* ignore */ } finally {
       setLoading(false);
@@ -48,6 +48,7 @@ export function ChatListScreen() {
             selection();
             navigation.navigate('Chat', {
               bookingId: item.bookingId,
+              participantId: item.participant.id,
               participantName: `${item.participant.firstName} ${item.participant.lastName}`,
               participantPhoto: item.participant.profilePhoto,
             } as any);

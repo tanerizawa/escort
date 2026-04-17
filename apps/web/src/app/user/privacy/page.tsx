@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
 import api from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,6 +26,9 @@ export default function PrivacyPage() {
 
   useEffect(() => {
     loadDashboard();
+    return () => {
+      if (exportIntervalRef.current) clearInterval(exportIntervalRef.current);
+    };
   }, []);
 
   const loadDashboard = async () => {
@@ -38,6 +41,8 @@ export default function PrivacyPage() {
       setLoading(false);
     }
   };
+
+  const exportIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const requestExport = async () => {
     setExporting(true);
@@ -52,20 +57,23 @@ export default function PrivacyPage() {
     }
   };
 
-  const pollExportStatus = async () => {
-    const interval = setInterval(async () => {
+  const pollExportStatus = () => {
+    if (exportIntervalRef.current) clearInterval(exportIntervalRef.current);
+    exportIntervalRef.current = setInterval(async () => {
       try {
         const res = await api.get('/gdpr/export/status');
         const data = res.data.data || res.data;
         setExportStatus(data.status);
         if (data.status === 'COMPLETED' || data.status === 'EXPIRED') {
-          clearInterval(interval);
+          if (exportIntervalRef.current) clearInterval(exportIntervalRef.current);
+          exportIntervalRef.current = null;
           if (data.downloadUrl) {
             window.open(data.downloadUrl, '_blank');
           }
         }
       } catch {
-        clearInterval(interval);
+        if (exportIntervalRef.current) clearInterval(exportIntervalRef.current);
+        exportIntervalRef.current = null;
       }
     }, 3000);
   };

@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsEnum, IsNumber, IsArray, Min } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsEnum, IsNumber, IsArray, Min, Matches } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterDto {
@@ -9,6 +9,9 @@ export class RegisterDto {
   @ApiProperty({ example: 'StrongP@ss123' })
   @IsString()
   @MinLength(8)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
+    message: 'Password harus mengandung huruf besar, huruf kecil, dan angka',
+  })
   password: string;
 
   @ApiProperty({ example: 'John' })

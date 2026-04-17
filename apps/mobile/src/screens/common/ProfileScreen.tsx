@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Switch,
 } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as SecureStore from 'expo-secure-store';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type BottomSheet from '@gorhom/bottom-sheet';
@@ -16,6 +17,7 @@ import { BottomSheetWrapper } from '../../components/ui/BottomSheetWrapper';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { COLORS, SPACING, RADIUS, SHADOWS, TIER_COLORS, GRADIENTS, HIT_SLOP, resolvePhotoUrl } from '../../constants/theme';
 import { useAuthStore } from '../../stores/auth';
+import { usePresenceStore } from '../../stores/presence';
 import { useHaptic } from '../../hooks/useHaptic';
 import api from '../../lib/api';
 
@@ -25,7 +27,12 @@ export function ProfileScreen() {
   const [escortProfile, setEscortProfile] = useState<any>(null);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const logoutSheetRef = useRef<BottomSheet>(null);
+  const languageSheetRef = useRef<BottomSheet>(null);
+  const [darkModeEnabled, setDarkModeEnabled] = useState(true);
+  const [language, setLanguage] = useState<'ID' | 'EN'>('ID');
   const { selection } = useHaptic();
+  const isOnline = usePresenceStore((s) => s.isOnline(user?.id || ''));
+  const checkOnline = usePresenceStore((s) => s.checkOnline);
 
   useEffect(() => {
     if (user?.role !== 'ESCORT') return;
@@ -46,6 +53,37 @@ export function ProfileScreen() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    if (user?.id) {
+      checkOnline(user.id).catch(() => {});
+    }
+  }, [user?.id, checkOnline]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const [savedDarkMode, savedLanguage] = await Promise.all([
+        SecureStore.getItemAsync('preference:dark-mode').catch(() => null),
+        SecureStore.getItemAsync('preference:language').catch(() => null),
+      ]);
+
+      if (!mounted) return;
+
+      if (savedDarkMode !== null) {
+        setDarkModeEnabled(savedDarkMode === 'true');
+      }
+
+      if (savedLanguage === 'ID' || savedLanguage === 'EN') {
+        setLanguage(savedLanguage);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const handleLogout = useCallback(() => {
     logoutSheetRef.current?.snapToIndex(0);
   }, []);
@@ -54,6 +92,24 @@ export function ProfileScreen() {
     logoutSheetRef.current?.close();
     logout();
   }, [logout]);
+
+  const handleToggleDarkMode = useCallback(async (value: boolean) => {
+    selection();
+    setDarkModeEnabled(value);
+    await SecureStore.setItemAsync('preference:dark-mode', String(value)).catch(() => {});
+  }, [selection]);
+
+  const openLanguageSheet = useCallback(() => {
+    selection();
+    languageSheetRef.current?.snapToIndex(0);
+  }, [selection]);
+
+  const handleSelectLanguage = useCallback(async (value: 'ID' | 'EN') => {
+    selection();
+    setLanguage(value);
+    await SecureStore.setItemAsync('preference:language', value).catch(() => {});
+    languageSheetRef.current?.close();
+  }, [selection]);
 
   if (!user) return null;
 
@@ -80,11 +136,19 @@ export function ProfileScreen() {
         </View>
         <View style={styles.nameRow}>
           <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
-          {escortProfile?.isVerified && <VerifiedBadge size={18} />}
+          {escortProfile?.isApproved && <VerifiedBadge size={18} />}
         </View>
         <Text style={styles.email}>{user.email}</Text>
-        <View style={styles.roleBadge}>
-          <Text style={styles.roleText}>{user.role === 'ESCORT' ? '✨ Escort' : '👤 Client'}</Text>
+        <View style={styles.identityRow}>
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleText}>{user.role === 'ESCORT' ? '✨ Escort' : '👤 Client'}</Text>
+          </View>
+          <View style={[styles.statusBadge, isOnline ? styles.statusBadgeOnline : styles.statusBadgeOffline]}>
+            <View style={[styles.statusDot, isOnline ? styles.statusDotOnline : styles.statusDotOffline]} />
+            <Text style={[styles.statusText, isOnline ? styles.statusTextOnline : styles.statusTextOffline]}>
+              {isOnline ? 'Online' : 'Offline'}
+            </Text>
+          </View>
         </View>
       </Animated.View>
 
@@ -126,18 +190,38 @@ export function ProfileScreen() {
       <Animated.View entering={FadeInDown.delay(350).duration(500)}>
         <Text style={styles.menuGroupLabel}>Preferensi</Text>
         <View style={styles.menu}>
-          <View style={[menuStyles.item, menuStyles.last]}>
+          <View style={menuStyles.item}>
             <View style={menuStyles.iconWrap}>
               <Ionicons name="moon" size={18} color={COLORS.gold} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={menuStyles.label}>Tema Gelap</Text>
-              <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 1 }}>Aktif secara default</Text>
+              <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 1 }}>
+                {darkModeEnabled ? 'Aktif dan disimpan di perangkat' : 'Dimatikan untuk preferensi lokal'}
+              </Text>
             </View>
-            <View style={{ backgroundColor: COLORS.success + '20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.sm }}>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.success }}>Aktif</Text>
-            </View>
+            <Switch
+              value={darkModeEnabled}
+              onValueChange={handleToggleDarkMode}
+              trackColor={{ false: COLORS.darkBorder, true: COLORS.gold + '80' }}
+              thumbColor={darkModeEnabled ? COLORS.gold : COLORS.textMuted}
+              ios_backgroundColor={COLORS.darkBorder}
+              accessibilityLabel="Toggle tema gelap"
+            />
           </View>
+          <TouchableOpacity style={[menuStyles.item, menuStyles.last]} onPress={openLanguageSheet} activeOpacity={0.7}>
+            <View style={menuStyles.iconWrap}>
+              <Ionicons name="language" size={18} color={COLORS.info} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={menuStyles.label}>Bahasa</Text>
+              <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 1 }}>Pilih bahasa tampilan aplikasi</Text>
+            </View>
+            <View style={styles.languagePill}>
+              <Text style={styles.languagePillText}>{language}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+          </TouchableOpacity>
         </View>
       </Animated.View>
 
@@ -162,6 +246,39 @@ export function ProfileScreen() {
       </Animated.View>
 
       <Text style={styles.version}>ARETON v1.0.0</Text>
+
+      <BottomSheetWrapper
+        ref={languageSheetRef}
+        title="Pilih Bahasa"
+        snapPoints={['32%']}
+        onClose={() => languageSheetRef.current?.close()}
+      >
+        <View style={styles.languageSheet}>
+          {(['ID', 'EN'] as const).map((option) => {
+            const isActive = language === option;
+            return (
+              <TouchableOpacity
+                key={option}
+                style={[styles.languageOption, isActive && styles.languageOptionActive]}
+                onPress={() => handleSelectLanguage(option)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.languageOptionBody}>
+                  <Text style={styles.languageOptionTitle}>{option === 'ID' ? 'Bahasa Indonesia' : 'English'}</Text>
+                  <Text style={styles.languageOptionSubtitle}>
+                    {option === 'ID' ? 'Gunakan label dan navigasi berbahasa Indonesia' : 'Use English labels and navigation'}
+                  </Text>
+                </View>
+                {isActive ? (
+                  <Ionicons name="checkmark-circle" size={22} color={COLORS.gold} />
+                ) : (
+                  <Ionicons name="ellipse-outline" size={22} color={COLORS.textMuted} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </BottomSheetWrapper>
 
       {/* Logout Bottom Sheet */}
       <BottomSheetWrapper
@@ -265,8 +382,8 @@ const styles = StyleSheet.create({
   avatarRing: { marginBottom: SPACING.md },
   name: { fontSize: 22, fontWeight: '800', color: COLORS.textPrimary },
   email: { fontSize: 14, color: COLORS.textSecondary, marginTop: 2 },
+  identityRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: SPACING.sm },
   roleBadge: {
-    marginTop: SPACING.sm,
     paddingHorizontal: 14,
     paddingVertical: 5,
     borderRadius: RADIUS.pill,
@@ -275,6 +392,29 @@ const styles = StyleSheet.create({
     borderColor: COLORS.gold + '30',
   },
   roleText: { fontSize: 12, fontWeight: '600', color: COLORS.gold },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+  },
+  statusBadgeOnline: {
+    backgroundColor: COLORS.success + '15',
+    borderColor: COLORS.success + '30',
+  },
+  statusBadgeOffline: {
+    backgroundColor: COLORS.textMuted + '15',
+    borderColor: COLORS.textMuted + '30',
+  },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusDotOnline: { backgroundColor: COLORS.success },
+  statusDotOffline: { backgroundColor: COLORS.textMuted },
+  statusText: { fontSize: 12, fontWeight: '600' },
+  statusTextOnline: { color: COLORS.success },
+  statusTextOffline: { color: COLORS.textMuted },
   statsCard: {
     backgroundColor: COLORS.darkCard,
     borderRadius: RADIUS.lg,
@@ -310,7 +450,57 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginHorizontal: SPACING.base,
   },
+  languagePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.info + '18',
+    borderWidth: 1,
+    borderColor: COLORS.info + '30',
+    marginRight: 8,
+  },
+  languagePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.info,
+    letterSpacing: 0.6,
+  },
   version: { textAlign: 'center', color: COLORS.textMuted, fontSize: 11, marginTop: SPACING.xl, letterSpacing: 2 },
+  languageSheet: {
+    paddingHorizontal: SPACING.base,
+    paddingTop: SPACING.sm,
+    gap: SPACING.sm,
+  },
+  languageOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.md,
+    paddingHorizontal: SPACING.base,
+    paddingVertical: 14,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.darkCard,
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
+  },
+  languageOptionActive: {
+    borderColor: COLORS.gold + '55',
+    backgroundColor: COLORS.gold + '10',
+  },
+  languageOptionBody: {
+    flex: 1,
+    gap: 3,
+  },
+  languageOptionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  languageOptionSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+  },
   logoutSheet: { alignItems: 'center', paddingVertical: SPACING.lg, gap: SPACING.md },
   logoutTitle: { fontSize: 18, fontWeight: '700', color: COLORS.textPrimary },
   logoutSub: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', paddingHorizontal: SPACING.lg },

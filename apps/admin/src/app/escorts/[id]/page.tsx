@@ -82,7 +82,7 @@ const dayLabels: Record<string, string> = {
 export default function AdminEscortDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const escortId = params.id as string;
+  const escortId = params?.id as string;
 
   const [escort, setEscort] = useState<EscortDetail | null>(null);
   const [loading, setLoading] = useState(true);

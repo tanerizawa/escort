@@ -17,8 +17,7 @@ export function SOSScreen({ route, navigation }: Props) {
   const [countdown, setCountdown] = useState(5);
   const [confirmed, setConfirmed] = useState(false);
 
-
-  const triggerSOS = async () => {
+  const triggerSOS = React.useCallback(async () => {
     setLoading(true);
     Vibration.vibrate([0, 500, 200, 500]);
     try {
@@ -42,20 +41,17 @@ export function SOSScreen({ route, navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const triggerSOSRef = React.useRef(triggerSOS);
-  triggerSOSRef.current = triggerSOS;
+  }, [bookingId]);
 
   useEffect(() => {
     if (!confirmed) return;
     if (countdown <= 0) {
-      triggerSOSRef.current();
+      triggerSOS();
       return;
     }
     const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
-  }, [countdown, confirmed]);
+  }, [countdown, confirmed, triggerSOS]);
 
   if (sent) {
     return (

@@ -78,7 +78,7 @@ export default function AdminUsersPage() {
 function AdminUsersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTab = (['users', 'escort-pending', 'kyc'] as Tab[]).includes(searchParams.get('tab') as Tab) ? searchParams.get('tab') as Tab : 'users';
+  const initialTab = (['users', 'escort-pending', 'kyc'] as Tab[]).includes(searchParams?.get('tab') as Tab) ? searchParams?.get('tab') as Tab : 'users';
 
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 

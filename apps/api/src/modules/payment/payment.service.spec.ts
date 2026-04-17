@@ -8,6 +8,7 @@ import { CryptoPaymentService } from './crypto-payment.service';
 import { DokuService } from './doku.service';
 import { EmailService } from '@modules/notification/email.service';
 import { Prisma } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 
 describe('PaymentService', () => {
   let service: PaymentService;
@@ -42,6 +43,17 @@ describe('PaymentService', () => {
     sendPaymentConfirmation: jest.fn().mockResolvedValue(undefined),
   };
 
+  const mockConfig = {
+    get: jest.fn((key: string) => {
+      const values: Record<string, string | undefined> = {
+        ENABLE_PAYMENT_MOCK: 'false',
+        NEXT_PUBLIC_ENABLE_PAYMENT_MOCK: 'false',
+        WEB_URL: 'https://areton.id',
+      };
+      return values[key];
+    }),
+  };
+
   const baseBooking = {
     id: 'booking-1',
     clientId: 'client-1',
@@ -57,10 +69,19 @@ describe('PaymentService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockRedis.get.mockResolvedValue(null);
+    mockConfig.get.mockImplementation((key: string) => {
+      const values: Record<string, string | undefined> = {
+        ENABLE_PAYMENT_MOCK: 'false',
+        NEXT_PUBLIC_ENABLE_PAYMENT_MOCK: 'false',
+        WEB_URL: 'https://areton.id',
+      };
+      return values[key];
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PaymentService,
+        { provide: ConfigService, useValue: mockConfig },
         { provide: PrismaService, useValue: mockPrisma },
         { provide: RedisService, useValue: mockRedis },
         { provide: XenditService, useValue: mockXendit },
@@ -222,6 +243,34 @@ describe('PaymentService', () => {
       // Verify amount charged is 50% for DP
       const callArgs = mockDoku.createInvoice.mock.calls[0][0];
       expect(callArgs.amount).toBe(1000000); // 50% of 2,000,000
+    });
+
+    it('should create a mock payment when mock mode is enabled', async () => {
+      mockConfig.get.mockImplementation((key: string) => {
+        const values: Record<string, string | undefined> = {
+          ENABLE_PAYMENT_MOCK: 'true',
+          NEXT_PUBLIC_ENABLE_PAYMENT_MOCK: 'false',
+          WEB_URL: 'https://areton.id',
+        };
+        return values[key];
+      });
+      mockPrisma.booking.findUnique.mockResolvedValue(baseBooking);
+      mockPrisma.payment.upsert.mockResolvedValue({
+        id: 'payment-1',
+        bookingId: 'booking-1',
+        status: 'PENDING',
+        method: 'doku_va',
+        paymentGatewayRef: 'ARETON-booking-1',
+      });
+
+      const result = await service.create('client-1', dto as any);
+
+      expect(mockDoku.createInvoice).not.toHaveBeenCalled();
+      expect(mockCrypto.createInvoice).not.toHaveBeenCalled();
+      expect(mockXendit.createInvoice).not.toHaveBeenCalled();
+      expect(result.gateway.mock).toBe(true);
+      expect(result.gateway.redirectUrl).toContain('/user/payments/status?order_id=');
+      expect(result.gateway.redirectUrl).toContain('&mock=true');
     });
   });
 });
