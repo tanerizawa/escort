@@ -9,7 +9,16 @@ export class EncryptionService {
   private readonly key: Buffer;
 
   constructor(private readonly config: ConfigService) {
-    const secret = this.config.get<string>('app.encryptionKey') || 'areton-default-encryption-key-change-me!';
+    const secret = this.config.get<string>('app.encryptionKey');
+    if (!secret) {
+      // Fail fast — there is no safe fallback for PII-grade encryption.
+      // ENCRYPTION_KEY is validated at startup by Joi, but we double-check
+      // here to avoid silently encrypting with a well-known default.
+      throw new Error('ENCRYPTION_KEY is required to initialise EncryptionService');
+    }
+    if (process.env.NODE_ENV === 'production' && secret.length < 32) {
+      throw new Error('ENCRYPTION_KEY must be at least 32 characters in production');
+    }
     // Derive a 32-byte key from the secret
     this.key = scryptSync(secret, 'areton-salt-v1', 32);
   }

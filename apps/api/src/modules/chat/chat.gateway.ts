@@ -20,14 +20,23 @@ interface AuthenticatedSocket extends Socket {
   userName?: string;
 }
 
+const chatCorsOrigins = (() => {
+  if (process.env.CORS_ORIGINS) {
+    return process.env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
+  }
+  return [
+    process.env.WEB_URL || 'http://localhost:3000',
+    process.env.ADMIN_URL || 'http://localhost:3001',
+    'http://localhost:3003',
+    'http://localhost:3005',
+    'https://areton.id',
+    'https://admin.areton.id',
+  ];
+})();
+
 @WebSocketGateway({
   cors: {
-    origin: [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'https://areton.id',
-      'https://admin.areton.id',
-    ],
+    origin: chatCorsOrigins,
     credentials: true,
   },
   namespace: '/chat',

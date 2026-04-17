@@ -130,7 +130,7 @@ Setelah CloudFlare aktif, update Nginx untuk:
 
 ### Apply the nginx snippet:
 ```bash
-sudo cp /home/escort/prestige-id/infra/cloudflare-nginx.conf /etc/nginx/conf.d/cloudflare.conf
+sudo cp /srv/areton-id/infra/cloudflare-nginx.conf /etc/nginx/conf.d/cloudflare.conf
 sudo nginx -t && sudo systemctl reload nginx
 ```
 

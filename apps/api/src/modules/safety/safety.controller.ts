@@ -29,7 +29,10 @@ export class SafetyController {
     @CurrentUser('id') userId: string,
     @Body() dto: TriggerSOSDto,
   ) {
-    return this.safetyService.triggerSOS(userId, dto.bookingId, dto.description);
+    return this.safetyService.triggerSOS(userId, dto.bookingId, dto.description, {
+      lat: dto.lat,
+      lng: dto.lng,
+    });
   }
 
   @Post('incident')

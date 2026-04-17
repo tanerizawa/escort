@@ -29,7 +29,12 @@ export class SafetyService {
     private readonly uploadService: UploadService,
   ) {}
 
-  async triggerSOS(userId: string, bookingId: string, description?: string) {
+  async triggerSOS(
+    userId: string,
+    bookingId: string,
+    description?: string,
+    location?: { lat?: number; lng?: number },
+  ) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
     });
@@ -49,21 +54,28 @@ export class SafetyService {
       },
     });
 
+    // Record last-known GPS coordinates in Redis (if provided) so admins /
+    // monitoring surfaces can show where the SOS was triggered from.
+    if (location?.lat != null && location?.lng != null) {
+      try {
+        await this.pingUserLocation(userId, {
+          lat: location.lat,
+          lng: location.lng,
+        });
+      } catch {
+        // non-fatal — don't fail the SOS because GPS recording failed
+      }
+    }
+
     // Audit log for SOS (critical)
     await this.audit.log({
       userId,
       action: 'SOS_TRIGGER',
       resource: 'bookings',
       resourceId: bookingId,
-      details: { incidentId: incident.id, description },
+      details: { incidentId: incident.id, description, location },
       severity: 'CRITICAL',
     });
-
-    // TODO: Phase 6 — Trigger immediate actions:
-    // 1. Notify admin team via push, SMS, email
-    // 2. Alert nearby security/authorities
-    // 3. Record GPS coordinates
-    // 4. Auto-record (if permitted)
 
     // Notify admins of SOS alert
     this.notificationService.notifyAdmins(

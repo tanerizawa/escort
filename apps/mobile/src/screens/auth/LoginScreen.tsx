@@ -54,7 +54,7 @@ export function LoginScreen({ navigation }: Props) {
             <View style={styles.logoGlow}>
               <Text style={styles.brand}>ARETON</Text>
             </View>
-            <Text style={styles.tagline}>Prestige Companion Service</Text>
+            <Text style={styles.tagline}>Professional Companion Service</Text>
             <View style={styles.decorLine}>
               <View style={styles.line} />
               <Ionicons name="diamond" size={10} color={COLORS.gold} />

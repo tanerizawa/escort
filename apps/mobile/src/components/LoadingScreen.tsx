@@ -8,7 +8,7 @@ export function LoadingScreen() {
     <View style={styles.container}>
       <Animated.View entering={FadeIn.duration(600)} style={styles.inner}>
         <Text style={styles.brand}>ARETON</Text>
-        <Text style={styles.tagline}>Prestige Companion</Text>
+        <Text style={styles.tagline}>Professional Companion</Text>
         <ActivityIndicator size="small" color={COLORS.gold} style={{ marginTop: SPACING.xl }} />
       </Animated.View>
     </View>
