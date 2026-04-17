@@ -22,6 +22,26 @@ export class TriggerSOSDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({ description: 'Incident type (defaults to SOS)' })
+  @IsOptional()
+  @IsString()
+  type?: string;
+
+  @ApiPropertyOptional({ description: 'Severity 1-5 (defaults to 5 for SOS)' })
+  @IsOptional()
+  @IsNumber()
+  severity?: number;
+
+  @ApiPropertyOptional({ description: 'Latitude at time of SOS' })
+  @IsOptional()
+  @IsNumber()
+  lat?: number;
+
+  @ApiPropertyOptional({ description: 'Longitude at time of SOS' })
+  @IsOptional()
+  @IsNumber()
+  lng?: number;
 }
 
 export class ReportIncidentDto {

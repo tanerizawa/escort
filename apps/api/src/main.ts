@@ -22,10 +22,13 @@ async function bootstrap() {
 
   // CORS — origins from env, supports CORS_ORIGINS comma-separated list
   const corsOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
+    ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
     : [
         process.env.WEB_URL || 'http://localhost:3000',
         process.env.ADMIN_URL || 'http://localhost:3001',
+        // Production `next start` ports used by PM2 / Docker
+        'http://localhost:3003',
+        'http://localhost:3005',
       ];
   app.enableCors({
     origin: corsOrigins,
