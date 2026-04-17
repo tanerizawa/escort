@@ -38,13 +38,33 @@ import appConfig from './config/app.config';
 import jwtConfig from './config/jwt.config';
 import databaseConfig from './config/database.config';
 import redisConfig from './config/redis.config';
+import featuresConfig from './config/features.config';
+
+const parseFlag = (raw: string | undefined, fallback = true): boolean => {
+  if (raw === undefined || raw === null || raw === '') return fallback;
+  return !['0', 'false', 'no', 'off'].includes(raw.trim().toLowerCase());
+};
+
+const FEATURE_FLAGS = {
+  matching: parseFlag(process.env.ENABLE_MATCHING),
+  corporate: parseFlag(process.env.ENABLE_CORPORATE),
+  training: parseFlag(process.env.ENABLE_TRAINING),
+  premium: parseFlag(process.env.ENABLE_PREMIUM),
+  referral: parseFlag(process.env.ENABLE_REFERRAL),
+  articles: parseFlag(process.env.ENABLE_ARTICLES),
+  testimonials: parseFlag(process.env.ENABLE_TESTIMONIALS),
+  gdpr: parseFlag(process.env.ENABLE_GDPR),
+  analytics: parseFlag(process.env.ENABLE_ANALYTICS),
+};
+
+const optional = <T>(enabled: boolean, mod: T): T[] => (enabled ? [mod] : []);
 
 @Module({
   imports: [
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, jwtConfig, databaseConfig, redisConfig],
+      load: [appConfig, jwtConfig, databaseConfig, redisConfig, featuresConfig],
       envFilePath: ['.env', '../../.env'],
       validationSchema: Joi.object({
         NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
@@ -55,6 +75,16 @@ import redisConfig from './config/redis.config';
         JWT_REFRESH_SECRET: Joi.string().when('NODE_ENV', { is: 'production', then: Joi.required() }),
         REDIS_HOST: Joi.string().default('localhost'),
         REDIS_PORT: Joi.number().default(6379),
+        // Optional feature flags (all default to enabled)
+        ENABLE_MATCHING: Joi.string().optional(),
+        ENABLE_CORPORATE: Joi.string().optional(),
+        ENABLE_TRAINING: Joi.string().optional(),
+        ENABLE_PREMIUM: Joi.string().optional(),
+        ENABLE_REFERRAL: Joi.string().optional(),
+        ENABLE_ARTICLES: Joi.string().optional(),
+        ENABLE_TESTIMONIALS: Joi.string().optional(),
+        ENABLE_GDPR: Joi.string().optional(),
+        ENABLE_ANALYTICS: Joi.string().optional(),
       }),
       validationOptions: {
         allowUnknown: true,
@@ -94,7 +124,7 @@ import redisConfig from './config/redis.config';
     CommonModule,
     ScheduleModule.forRoot(),
 
-    // Feature Modules
+    // ── Core MVP modules (always on) ─────────────
     AuthModule,
     UserModule,
     BookingModule,
@@ -104,20 +134,22 @@ import redisConfig from './config/redis.config';
     ReviewModule,
     SafetyModule,
     AdminModule,
-    MatchingModule,
-    CorporateModule,
-    TrainingModule,
-    PremiumModule,
     MetricsModule,
     KycModule,
     ImageModule,
-    ReferralModule,
-    ArticleModule,
-    TestimonialModule,
-    GdprModule,
-    AnalyticsModule,
     InvoiceModule,
     HealthModule,
+
+    // ── Optional / Phase 2+ modules (flag-gated) ──
+    ...optional(FEATURE_FLAGS.matching, MatchingModule),
+    ...optional(FEATURE_FLAGS.corporate, CorporateModule),
+    ...optional(FEATURE_FLAGS.training, TrainingModule),
+    ...optional(FEATURE_FLAGS.premium, PremiumModule),
+    ...optional(FEATURE_FLAGS.referral, ReferralModule),
+    ...optional(FEATURE_FLAGS.articles, ArticleModule),
+    ...optional(FEATURE_FLAGS.testimonials, TestimonialModule),
+    ...optional(FEATURE_FLAGS.gdpr, GdprModule),
+    ...optional(FEATURE_FLAGS.analytics, AnalyticsModule),
   ],
   controllers: [AppController],
   providers: [
