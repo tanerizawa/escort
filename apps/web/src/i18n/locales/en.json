@@ -9,6 +9,7 @@
     "edit": "Edit",
     "back": "Back",
     "next": "Next",
+    "continue": "Continue",
     "previous": "Previous",
     "search": "Search",
     "filter": "Filter",
@@ -199,7 +200,24 @@
     "newPassword": "New Password",
     "confirmPassword": "Confirm Password",
     "sendLink": "Send Reset Link",
-    "emailPlaceholder": "name@email.com"
+    "emailPlaceholder": "name@email.com",
+
+    "portalClient": "Client Portal",
+    "portalEscort": "Partner Portal",
+    "clientLoginTitle": "Sign in to ARETON",
+    "clientLoginSubtitle": "The client atrium for browsing, booking, and enjoying professional companion services.",
+    "escortLoginTitle": "Sign in as a Partner",
+    "escortLoginSubtitle": "A studio for verified companions — your schedule, earnings, and guests all live here.",
+    "loginAsEscortPrompt": "Are you a professional companion?",
+    "loginAsEscortCTA": "Sign in via the Partner portal",
+    "loginAsClientPrompt": "Not a partner? This portal is for companions only.",
+    "loginAsClientCTA": "Sign in as a client",
+    "wrongPortalClient": "This account is registered as a client. Please use the client portal.",
+    "wrongPortalEscort": "This account is registered as a partner. Please use the partner portal.",
+    "backToHome": "Back to Home",
+    "adab": "Sub rosa · sub fide — beneath the rose, in confidence.",
+    "stepOne": "Step 01",
+    "stepTwo": "Step 02"
   },
   "dashboard": {
     "welcome": "Welcome to your dashboard. What would you like to do today?",
